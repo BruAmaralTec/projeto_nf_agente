@@ -44,9 +44,6 @@ st.markdown(
     .st-emotion-cache-7ym5gk:hover {{
         transform: scale(1.02);
     }}
-    
-    /* Nota: Os seletores 'st-emotion-cache-xxxx' podem mudar com
-       as atualizações do Streamlit. */
     </style>
     """,
     unsafe_allow_html=True
@@ -68,14 +65,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- Gerenciamento de Estado Principal ---
-# Esta é a chave para o nosso "roteador" de tela
 if "app_mode" not in st.session_state:
     st.session_state.app_mode = None  # None = Mostra a tela inicial
 
 # --- TELA INICIAL (ROTEADOR) ---
 if st.session_state.app_mode is None:
     
-    # Esconde a barra lateral na tela inicial
     st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 
     col_logo, col_title = st.columns([1, 3])
@@ -96,7 +91,7 @@ if st.session_state.app_mode is None:
             st.markdown("Processe um único arquivo de nota fiscal (PDF, XML, Imagem) e gere um arquivo Excel de saída correspondente.")
             if st.button("Iniciar Processamento Único", use_container_width=True, type="primary"):
                 st.session_state.app_mode = "single"
-                st.rerun() # Reinicia o script para carregar a outra tela
+                st.rerun() 
 
     with col2:
         with st.container(border=True):
@@ -104,7 +99,7 @@ if st.session_state.app_mode is None:
             st.markdown("Processe múltiplos arquivos e acumule todos os dados extraídos em uma única planilha Excel mestra.")
             if st.button("Iniciar Processamento Compilado", use_container_width=True, type="primary"):
                 st.session_state.app_mode = "accumulated"
-                st.rerun() # Reinicia o script para carregar a outra tela
+                st.rerun() 
 
 # --- TELA PRINCIPAL DO APLICATIVO (Chat) ---
 else:
@@ -115,21 +110,21 @@ else:
         st.header("🤖 Agente Extrator de NF")
         st.markdown("---")
         
-        # Mostra o modo atual e um botão para resetar
         modo_atual = "Arquivo Único" if st.session_state.app_mode == "single" else "Compilado"
         st.markdown(f"**Modo Atual:** `{modo_atual}`")
         if st.button("Mudar Modo / Voltar ao Início"):
-            st.session_state.app_mode = None # Reseta o estado
-            st.session_state.messages = [] # Limpa o chat
-            st.rerun() # Reinicia para mostrar a tela inicial
+            st.session_state.app_mode = None 
+            st.session_state.messages = [] 
+            st.rerun() 
             
         st.markdown("---")
         st.caption("Repositório do Projeto: [GitHub](https://github.com/BruAmaralTec/projeto_nf_agente)") 
 
     # --- Título Principal ---
     st.header(f"Chat de Processamento - Modo: {modo_atual}")
-    if st.session_state.app_mode == "accumulated":
-        st.warning("**Aviso:** O modo 'Compilado' está em desenvolvimento. Por enquanto, ele salvará cada arquivo individualmente, assim como o 'Modo Único'.")
+    
+    # --- AVISO REMOVIDO ---
+    # O st.warning foi removido daqui!
 
     # --- Memória de Chat ---
     if "session_id" not in st.session_state:
@@ -178,11 +173,12 @@ else:
         with st.chat_message("assistant"):
             with st.spinner("O Agente está pensando... 🧠"):
                 
-                # Prepara o estado inicial para o grafo
+                # --- A MUDANÇA CRUCIAL ESTÁ AQUI ---
                 estado_inicial = {
                     "messages": [HumanMessage(content=prompt_tecnico)],
                     "file_path": temp_file_path,
-                    "excel_file_path": None
+                    "excel_file_path": None,
+                    "app_mode": st.session_state.app_mode # <-- INJETANDO O MODO!
                 }
                 
                 final_state = app.invoke(estado_inicial, config=st.session_state.thread_config)

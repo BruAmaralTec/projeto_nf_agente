@@ -8,14 +8,15 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 import operator
 
-# --- 1. Importar NOSSAS 5 FERRAMENTAS ---
+# --- 1. Importar NOSSAS 6 FERRAMENTAS ---
 from tools.extracao import (
     extrair_dados_xml, 
     extrair_texto_imagem, 
     extrair_texto_pdf, 
     extrair_texto_html,
     salvar_dados_em_excel,
-    DadosNotaFiscal # Importamos o "molde" também
+    acumular_dados_em_excel, # <-- NOVIDADE
+    DadosNotaFiscal 
 )
 
 # Carregar as variáveis de ambiente (nosso .env)
@@ -28,7 +29,8 @@ tools = [
     extrair_texto_imagem, 
     extrair_texto_pdf, 
     extrair_texto_html,
-    salvar_dados_em_excel
+    salvar_dados_em_excel,
+    acumular_dados_em_excel # <-- NOVIDADE
 ]
 
 # --- 3. Definir o Modelo (LLM) ---
@@ -36,9 +38,13 @@ model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 model_with_tools = model.bind_tools(tools)
 
 # --- 4. Definir as Instruções (System Prompt) ---
+# O prompt foi ATUALIZADO com as regras de modo
 system_prompt = """
 Você é um assistente especialista em processamento de notas fiscais brasileiras.
 Sua missão é seguir um processo de duas etapas:
+
+O usuário informará o MODO DE OPERAÇÃO no início da conversa. 
+Preste muita atenção a ele.
 
 Etapa 1: Extração de Dados Brutos.
 - O usuário fornecerá o caminho para um arquivo (XML, PDF, HTML, PNG, JPG).
@@ -52,9 +58,14 @@ Etapa 1: Extração de Dados Brutos.
 Etapa 2: Formatação e Salvamento.
 - Após receber o texto bruto, analise-o.
 - Extraia os campos principais: cnpj_emitente, nome_emitente, cnpj_cpf_destinatario, nome_destinatario, chave_acesso, e valor_total.
-- Use o seu conhecimento para limpar os dados (ex: remover 'R$' do valor, manter apenas números em CNPJs).
-- Quando tiver todos os dados estruturados, você DEVE chamar a ferramenta 'salvar_dados_em_excel' para salvar o resultado.
-- NUNCA chame 'salvar_dados_em_excel' antes de ter os dados.
+- Use o seu conhecimento para limpar os dados.
+- Quando tiver todos os dados estruturados, você DEVE chamar uma ferramenta de salvamento.
+
+- !! REGRAS DE SALVAMENTO (MUITO IMPORTANTE) !!
+- Se o MODO DE OPERAÇÃO for 'single', você DEVE chamar a ferramenta 'salvar_dados_em_excel'.
+- Se o MODO DE OPERAÇÃO for 'accumulated', você DEVE chamar a ferramenta 'acumular_dados_em_excel'.
+
+- NUNCA chame uma ferramenta de salvamento antes de ter os dados.
 - Ao final, informe ao usuário que o arquivo foi salvo e o caminho dele.
 """
 
@@ -63,26 +74,33 @@ class AgentState(TypedDict):
     messages: Annotated[list, operator.add]
     file_path: str
     excel_file_path: Optional[str] = None
+    app_mode: str # <-- NOVIDADE: Para guardar 'single' ou 'accumulated'
 
 # --- 6. Definir os "Nós" do Gráfico (As Etapas) ---
 
+# NÓ ATUALIZADO: call_model
 def call_model(state: AgentState):
     """Chama o LLM para decidir o próximo passo."""
     print("--- Nó: call_model (Agente) ---")
     messages = state["messages"]
+    app_mode = state["app_mode"] # <-- Pega o modo do estado
     
     if len(messages) == 1:
+        # Injeta o modo de operação no prompt do sistema
+        prompt_com_modo = f"MODO DE OPERAÇÃO ATUAL: {app_mode}\n\n{system_prompt}"
+        
         messages_with_prompt = [
-            HumanMessage(content=system_prompt), 
+            HumanMessage(content=prompt_com_modo), 
             messages[0] 
         ]
     else:
         messages_with_prompt = messages
 
+    print(f"Modo atual enviado ao Agente: {app_mode}")
     response = model_with_tools.invoke(messages_with_prompt)
     return {"messages": [response]}
 
-# --- NÓ DE FERRAMENTAS (COM A CORREÇÃO) ---
+# NÓ ATUALIZADO: call_tools
 def call_tools(state: AgentState):
     """Executa as ferramentas que o agente decidiu usar E atualiza o estado."""
     print("--- Nó: call_tools (Ação) ---")
@@ -90,11 +108,9 @@ def call_tools(state: AgentState):
     
     if not last_message.tool_calls:
         print("Agente não chamou ferramentas. Fim do passo.")
-        return {} # Retorna dicionário vazio
+        return {}
 
     tool_messages = []
-    
-    # Pega o valor atual do excel_file_path, caso ele não seja modificado
     excel_path = state.get("excel_file_path") 
 
     for tool_call in last_message.tool_calls:
@@ -109,20 +125,27 @@ def call_tools(state: AgentState):
         if tool_name == "extrair_texto_html": args = {"caminho_do_arquivo_html": state["file_path"]}
         
         try:
-            # Chama a ferramenta
-            if tool_name == "salvar_dados_em_excel":
+            resultado_msg_para_agente = ""
+            
+            # --- LÓGICA ATUALIZADA (AGRUPADA) ---
+            if tool_name in ["salvar_dados_em_excel", "acumular_dados_em_excel"]:
                 dados_pydantic = DadosNotaFiscal(**args['dados_nota'])
-                resultado = salvar_dados_em_excel.func(dados_pydantic)
                 
-                # --- LÓGICA DE ATUALIZAÇÃO DO ESTADO ---
+                # Chama a ferramenta correta
+                ferramenta_para_chamar = globals()[tool_name]
+                resultado = ferramenta_para_chamar.func(dados_pydantic)
+                
+                # Atualiza o estado
                 if not str(resultado).startswith("Erro"):
                     excel_path = str(resultado) # Atualiza a variável
-                    resultado_msg_para_agente = f"Arquivo salvo com sucesso em: {excel_path}"
+                    if tool_name == "salvar_dados_em_excel":
+                         resultado_msg_para_agente = f"Arquivo salvo com sucesso em: {excel_path}"
+                    else:
+                         resultado_msg_para_agente = f"Dados ACUMULADOS com sucesso em: {excel_path}"
                 else:
                     resultado_msg_para_agente = str(resultado) # Passa a msg de erro
             
-            else:
-                # Chama ferramentas de extração
+            else: # Ferramentas de extração
                 ferramenta = globals()[tool_name]
                 resultado = ferramenta.func(**args)
                 resultado_msg_para_agente = str(resultado)
@@ -133,8 +156,6 @@ def call_tools(state: AgentState):
             print(f"Erro ao executar ferramenta {tool_name}: {e}")
             tool_messages.append(ToolMessage(content=f"Erro: {e}", tool_call_id=tool_call["id"]))
 
-    # --- O RETORNO CORRETO DO LANGGRAPH ---
-    # Retorna as mensagens E o novo estado do excel_file_path
     return {"messages": tool_messages, "excel_file_path": excel_path}
 
 
@@ -147,7 +168,7 @@ def should_continue(state: AgentState):
     return END
 
 # --- 8. Montar e Compilar o Gráfico ---
-print("Compilando o workflow do agente...")
+print("Compilando o workflow do agente (v2.5)...")
 
 workflow = StateGraph(AgentState)
 

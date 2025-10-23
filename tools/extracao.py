@@ -28,7 +28,6 @@ class DadosNotaFiscal(BaseModel):
     chave_acesso: Optional[str] = Field(description="Número da Chave de Acesso da NF-e")
     valor_total: Optional[float] = Field(description="Valor Total da nota fiscal")
 
-# ... (todas as outras 4 ferramentas de extração permanecem idênticas) ...
 # --- Ferramenta 1: Extrator de XML ---
 @tool
 def extrair_dados_xml(caminho_do_arquivo_xml: str) -> str:
@@ -153,15 +152,15 @@ def extrair_texto_html(caminho_do_arquivo_html: str) -> str:
         print(f"Erro ao processar HTML: {e}")
         return f"Erro ao processar o arquivo HTML: {e}"
 
-# --- FERRAMENTA 5: SALVAR EM EXCEL ---
+# --- FERRAMENTA 5: SALVAR EM EXCEL (Modo Único) ---
 @tool
 def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
     """
-    Ferramenta final. Recebe os dados estruturados da nota fiscal 
-    (no formato do Pydantic 'DadosNotaFiscal') e salva em um arquivo Excel.
+    Ferramenta para MODO ÚNICO. Recebe os dados estruturados 
+    (no formato 'DadosNotaFiscal') e salva em um arquivo Excel com nome ÚNICO.
     RETORNA APENAS O CAMINHO do arquivo salvo ou uma string de ERRO.
     """
-    print(f"--- Usando Ferramenta de Salvamento em Excel ---")
+    print(f"--- Usando Ferramenta de Salvamento (ÚNICO) ---")
     try:
         output_dir = "dados_saida"
         os.makedirs(output_dir, exist_ok=True)
@@ -177,11 +176,54 @@ def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
         df.to_excel(caminho_completo, index=False)
         
         print(f"Dados salvos com sucesso em: {caminho_completo}")
-        
-        # --- MUDANÇA AQUI ---
-        return caminho_completo # Retorna APENAS o caminho
+        return caminho_completo
     
     except Exception as e:
         print(f"Erro ao salvar arquivo Excel: {e}")
-        # --- MUDANÇA AQUI ---
-        return f"Erro ao salvar: {e}" # Retorna uma string de erro simples
+        return f"Erro ao salvar: {e}"
+
+# --- FERRAMENTA 6: ACUMULAR EM EXCEL (Modo Compilado) ---
+@tool
+def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
+    """
+    Ferramenta para MODO COMPILADO. Recebe os dados estruturados
+    (no formato 'DadosNotaFiscal') e os ADICIONA a um arquivo Excel mestre.
+    Se o arquivo não existir, ele é criado.
+    RETORNA APENAS O CAMINHO do arquivo mestre salvo ou uma string de ERRO.
+    """
+    print(f"--- Usando Ferramenta de Salvamento (COMPILADO) ---")
+    try:
+        output_dir = "dados_saida"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Define um nome de arquivo mestre fixo
+        caminho_arquivo_mestre = os.path.join(output_dir, "COMPILADO_MESTRE.xlsx")
+        
+        # Converte os novos dados para um DataFrame
+        dados_dict = dados_nota.model_dump()
+        novo_df = pd.DataFrame([dados_dict])
+        
+        # Verifica se o arquivo mestre já existe
+        if os.path.exists(caminho_arquivo_mestre):
+            print("Arquivo mestre encontrado. Lendo dados existentes...")
+            # Lê o arquivo existente
+            df_existente = pd.read_excel(caminho_arquivo_mestre)
+            
+            # Combina o DataFrame existente com o novo
+            df_combinado = pd.concat([df_existente, novo_df], ignore_index=True)
+            
+            # Salva o arquivo combinado, substituindo o antigo
+            df_combinado.to_excel(caminho_arquivo_mestre, index=False)
+            print("Dados adicionados ao arquivo mestre com sucesso.")
+        
+        else:
+            print("Arquivo mestre não encontrado. Criando novo arquivo...")
+            # Se não existe, apenas salva o novo DataFrame
+            novo_df.to_excel(caminho_arquivo_mestre, index=False)
+            print("Novo arquivo mestre criado com sucesso.")
+
+        return caminho_arquivo_mestre
+    
+    except Exception as e:
+        print(f"Erro ao acumular dados no Excel: {e}")
+        return f"Erro ao acumular: {e}"
