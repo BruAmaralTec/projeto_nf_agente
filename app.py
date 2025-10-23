@@ -53,7 +53,7 @@ st.markdown(
 # --- Configuração da Página ---
 st.set_page_config(
     page_title="Meta Singularity - Agente NF",
-    page_icon="assets/logo_meta_singularity.png", # Usando a logo como ícone!
+    page_icon="assets/logo_meta_singularity.png",
     layout="wide",
     initial_sidebar_state="auto",
 )
@@ -66,7 +66,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- Gerenciamento de Estado Principal ---
 if "app_mode" not in st.session_state:
-    st.session_state.app_mode = None  # None = Mostra a tela inicial
+    st.session_state.app_mode = None
 
 # --- TELA INICIAL (ROTEADOR) ---
 if st.session_state.app_mode is None:
@@ -123,9 +123,6 @@ else:
     # --- Título Principal ---
     st.header(f"Chat de Processamento - Modo: {modo_atual}")
     
-    # --- AVISO REMOVIDO ---
-    # O st.warning foi removido daqui!
-
     # --- Memória de Chat ---
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
@@ -135,7 +132,7 @@ else:
         st.session_state.thread_config = {"configurable": {"thread_id": st.session_state.session_id}}
 
     # --- Renderização do Histórico de Chat ---
-    for message in st.session_state.messages:
+    for i, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message["role"] == "assistant" and "excel_path" in message:
@@ -147,13 +144,15 @@ else:
                             data=f,
                             file_name=os.path.basename(excel_path),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key=f"history_btn_{i}" # Chave única para o histórico
                         )
 
     # --- Widget de Upload de Arquivo ---
     uploaded_file_widget = st.file_uploader(
         "Faça o upload da sua Nota Fiscal aqui:", 
         type=["pdf", "xml", "html", "png", "jpg", "jpeg"],
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="file_uploader" # <-- MUDANÇA 1: Adiciona a 'key'
     )
 
     if uploaded_file_widget is not None:
@@ -173,12 +172,11 @@ else:
         with st.chat_message("assistant"):
             with st.spinner("O Agente está pensando... 🧠"):
                 
-                # --- A MUDANÇA CRUCIAL ESTÁ AQUI ---
                 estado_inicial = {
                     "messages": [HumanMessage(content=prompt_tecnico)],
                     "file_path": temp_file_path,
                     "excel_file_path": None,
-                    "app_mode": st.session_state.app_mode # <-- INJETANDO O MODO!
+                    "app_mode": st.session_state.app_mode
                 }
                 
                 final_state = app.invoke(estado_inicial, config=st.session_state.thread_config)
@@ -202,7 +200,11 @@ else:
                             data=f,
                             file_name=os.path.basename(excel_path_final),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            key=f"download_btn_{st.session_state.session_id}" 
+                            key=f"new_btn_{len(st.session_state.messages)}"
                         )
-                
-                st.rerun()
+        
+        # --- MUDANÇA 2 e 3: Limpar o widget e Recarregar a UI ---
+        # Limpa o estado do uploader para que o `if` não rode de novo
+        st.session_state.file_uploader = None
+        # Recarrega a página para refletir o estado limpo
+        st.rerun()
