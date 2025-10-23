@@ -144,7 +144,7 @@ else:
                             data=f,
                             file_name=os.path.basename(excel_path),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            key=f"history_btn_{i}" # Chave única para o histórico
+                            key=f"history_btn_{i}"
                         )
 
     # --- Widget de Upload de Arquivo ---
@@ -152,7 +152,7 @@ else:
         "Faça o upload da sua Nota Fiscal aqui:", 
         type=["pdf", "xml", "html", "png", "jpg", "jpeg"],
         label_visibility="collapsed",
-        key="file_uploader" # <-- MUDANÇA 1: Adiciona a 'key'
+        key="file_uploader" # A 'key' é essencial
     )
 
     if uploaded_file_widget is not None:
@@ -203,8 +203,8 @@ else:
                             key=f"new_btn_{len(st.session_state.messages)}"
                         )
         
-        # --- MUDANÇA 2 e 3: Limpar o widget e Recarregar a UI ---
-        # Limpa o estado do uploader para que o `if` não rode de novo
-        st.session_state.file_uploader = None
-        # Recarrega a página para refletir o estado limpo
-        st.rerun()
+        # --- MUDANÇA CRUCIAL AQUI ---
+        # Em vez de 'st.session_state.file_uploader = None'
+        # Nós deletamos a chave
+        del st.session_state.file_uploader
+        st.rerun() # E recarregamos
