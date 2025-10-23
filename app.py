@@ -4,15 +4,47 @@ import uuid
 from workflows.graph import app  # Nosso cérebro de agente!
 from langchain_core.messages import HumanMessage
 
+# --- CSS Personalizado para a Barra Lateral e Estilo Geral ---
+# A cor de fundo da sua imagem é #CFF798.
+# Para manter a consistência, vamos usá-la como cor primária
+# e um verde mais escuro (#A0E670) para elementos interativos.
+st.markdown(
+    f"""
+    <style>
+    /* Cor de fundo da barra lateral */
+    [data-testid="stSidebar"] {{
+        background-color: #CFF798; /* Cor de fundo da imagem da sua logo */
+        color: #000000; /* Texto preto para contraste */
+    }}
+    /* Cor dos ícones e texto na barra lateral */
+    [data-testid="stSidebar"] .st-emotion-cache-1pxjwj4 {{ /* Ajustar seletor conforme versão do streamlit */
+        color: #000000;
+    }}
+    /* Cor primária para botões, sliders, etc. */
+    .st-emotion-cache-10qj7k0 {{ /* Ajustar seletor conforme versão do streamlit para primary button */
+        background-color: #A0E670; /* Verde um pouco mais escuro para botões */
+        color: black !important;
+    }}
+    /* Cor de hover/ativo para botões */
+    .st-emotion-cache-10qj7k0:hover {{
+        background-color: #8FD550; /* Verde ainda mais escuro no hover */
+        color: black !important;
+    }}
+    /* Cores do chat para melhor contraste com o fundo */
+    [data-testid="stChatMessage"] p {{
+        color: #333333; /* Cor do texto no chat */
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # --- Configuração da Página ---
 st.set_page_config(
     page_title="Meta Singularity - Agente NF",
     page_icon="🤖",
     layout="wide",
-    
-    # --- MUDANÇA AQUI ---
-    initial_sidebar_state="auto", # Era "expanded"
-    # --- FIM DA MUDANÇA ---
+    initial_sidebar_state="auto",
 )
 
 # --- Diretórios ---
@@ -23,7 +55,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- Barra Lateral (Sidebar) ---
 with st.sidebar:
-    st.image("https://storage.googleapis.com/gen-ai-samples/images/google-logo-wordmark.svg", width=200)
+    # --- MUDANÇA DA LOGO AQUI ---
+    st.image("assets/logo_meta_singularity.png", width=200) # Usando a sua imagem local
     st.title("Meta Singularity")
     st.header("🤖 Agente Extrator de NF")
     st.markdown("---")
