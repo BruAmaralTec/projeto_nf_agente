@@ -16,30 +16,46 @@ from pydantic import BaseModel, Field
 # --- Configuração (Necessário para Windows) ---
 poppler_path = None # Deixe None se estiver no PATH
 
-# --- Estrutura de Dados da Nota Fiscal (Pydantic) ---
+# --- MUDANÇA CRUCIAL: O "MOLDE" DE DADOS FOI EXPANDIDO ---
 class DadosNotaFiscal(BaseModel):
     """
     Estrutura de dados para armazenar informações extraídas de uma nota fiscal.
+    Todos os campos são opcionais e serão preenchidos se encontrados.
     """
+    # Dados Principais
+    chave_acesso: Optional[str] = Field(description="Número da Chave de Acesso da NF-e (44 dígitos) ou Código de Verificação da NFS-e")
+    numero_nf: Optional[str] = Field(description="Número da Nota Fiscal (ex: 'Número: 1254200' ou 'Nº 255376898')")
+    data_emissao: Optional[str] = Field(description="Data e Hora de Emissão da nota (ex: '20/09/2025 19:51:09' ou '19/10/2025 22:32:33')")
+    
+    # Dados do Emitente (Quem Vendeu)
     cnpj_emitente: Optional[str] = Field(description="CNPJ do emissor da nota fiscal")
     nome_emitente: Optional[str] = Field(description="Nome ou Razão Social do emissor")
-    cnpj_cpf_destinatario: Optional[str] = Field(description="CNPJ ou CPF do destinatário")
-    nome_destinatario: Optional[str] = Field(description="Nome ou Razão Social do destinatário")
-    chave_acesso: Optional[str] = Field(description="Número da Chave de Acesso da NF-e")
-    valor_total: Optional[float] = Field(description="Valor Total da nota fiscal")
+    endereco_emitente: Optional[str] = Field(description="Endereço completo (Rua, N°, Bairro) do emissor")
+    municipio_emitente: Optional[str] = Field(description="Município e UF do emissor (ex: 'São Paulo UF: SP')")
+
+    # Dados do Destinatário (Quem Comprou)
+    cnpj_cpf_destinatario: Optional[str] = Field(description="CNPJ ou CPF do destinatário/tomador")
+    nome_destinatario: Optional[str] = Field(description="Nome ou Razão Social do destinatário/tomador")
+    endereco_destinatario: Optional[str] = Field(description="Endereço completo (Rua, N°, Bairro) do destinatário")
+    municipio_destinatario: Optional[str] = Field(description="Município e UF do destinatário (ex: 'São Paulo UF: SP')")
+
+    # Valores
+    valor_total: Optional[float] = Field(description="Valor Total da nota fiscal (ex: 'Valor a pagar R$: 138,95' ou 'VALOR TOTAL DO SERVIÇO = R$ 238,36')")
+    base_calculo: Optional[float] = Field(description="Valor da Base de Cálculo do ISS ou ICMS")
+    valor_iss: Optional[float] = Field(description="Valor do ISS (imposto sobre serviço)")
+    valor_icms: Optional[float] = Field(description="Valor do ICMS (imposto sobre mercadoria)")
+
+    # Detalhes (NF de Serviço)
+    discriminacao_servicos: Optional[str] = Field(description="Texto que descreve os serviços prestados (ex: 'licenciamento ou direito de uso de programa de computador')")
+
 
 # --- Ferramentas de Extração (Com @tool) ---
 # ... (as 4 ferramentas de extração: xml, imagem, pdf, html permanecem IDÊNTICAS) ...
 @tool
 def extrair_dados_xml(caminho_do_arquivo_xml: str) -> str:
-    """
-    Ferramenta especializada em ler um arquivo XML de NF-e (Nota Fiscal Eletrônica).
-    Recebe o CAMINHO para o arquivo .xml e extrai os campos principais.
-    Retorna uma string formatada com os dados da nota.
-    """
+    # ... (código interno sem mudança) ...
     print(f"--- Usando Ferramenta de Extração de XML ---")
     try:
-        # ... (código interno sem mudança) ...
         ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
         tree = etree.parse(caminho_do_arquivo_xml); root = tree.getroot(); dados_nf = {}
         chave_node = root.find('.//nfe:infNFe', ns);
@@ -63,11 +79,7 @@ def extrair_dados_xml(caminho_do_arquivo_xml: str) -> str:
 
 @tool
 def extrair_texto_imagem(caminho_do_arquivo_imagem: str) -> str:
-    """
-    Ferramenta especializada em ler texto de imagens (fotos, scans) de notas fiscais (.png, .jpg, .jpeg).
-    Usa OCR para extrair todo o texto contido nela.
-    Retorna uma string única com todo o texto bruto encontrado.
-    """
+    # ... (código interno sem mudança) ...
     print(f"--- Usando Ferramenta de Extração de Imagem (OCR) ---")
     try:
         img = cv2.imread(caminho_do_arquivo_imagem)
@@ -80,11 +92,7 @@ def extrair_texto_imagem(caminho_do_arquivo_imagem: str) -> str:
 
 @tool
 def extrair_texto_pdf(caminho_do_arquivo_pdf: str) -> str:
-    """
-    Ferramenta especializada em ler texto de arquivos PDF.
-    Converte cada página do PDF em uma imagem e usa OCR para extrair o texto.
-    Recebe o CAMINHO para o arquivo .pdf e retorna uma string única com todo o texto.
-    """
+    # ... (código interno sem mudança) ...
     print(f"--- Usando Ferramenta de Extração de PDF (OCR) ---")
     with tempfile.TemporaryDirectory() as path_temporario:
         try:
@@ -105,11 +113,7 @@ def extrair_texto_pdf(caminho_do_arquivo_pdf: str) -> str:
 
 @tool
 def extrair_texto_html(caminho_do_arquivo_html: str) -> str:
-    """
-    Ferramenta especializada em ler arquivos .html (arquivos .html salvos no disco).
-    "Raspa" (parse) o arquivo e extrai todo o texto visível.
-    Recebe o CAMINHO para o arquivo .html e retorna uma string com o texto limpo.
-    """
+    # ... (código interno sem mudança) ...
     print(f"--- Usando Ferramenta de Extração de HTML ---")
     try:
         conteudo = "";
@@ -130,31 +134,25 @@ def extrair_texto_html(caminho_do_arquivo_html: str) -> str:
     except Exception as e:
         print(f"Erro ao processar HTML: {e}"); return f"Erro ao processar o arquivo HTML: {e}"
 
-# --- MUDANÇA 1: Nova ferramenta GENÉRICA para o LLM ---
+# --- Ferramenta Genérica de Salvamento (Sem mudança) ---
 @tool
 def salvar_dados_nota(dados_nota: DadosNotaFiscal) -> str:
     """
     Ferramenta GENÉRICA de salvamento. O Agente DEVE chamar esta ferramenta
     depois de extrair os dados da nota.
     O sistema interno irá decidir se salva em um arquivo único ou acumulado.
-    O Agente não precisa se preocupar com isso.
     Recebe os dados no formato 'DadosNotaFiscal'.
     Retorna uma string de confirmação.
     """
-    # Esta função é um "placeholder". A lógica real estará no workflows/graph.py
-    # O simples fato de ser chamada é o suficiente.
     print(f"--- Ferramenta 'salvar_dados_nota' chamada pelo Agente ---")
     return "Chamada de salvamento recebida."
 
 
-# --- MUDANÇA 2: Funções de salvamento (AGORA SEM @tool) ---
-# Estas são agora funções Python normais que o LLM não pode ver.
+# --- Funções de Lógica Interna de Salvamento (Sem mudança) ---
+# Elas automaticamente usarão o "molde" expandido de DadosNotaFiscal
 
 def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
-    """
-    LÓGICA INTERNA: MODO ÚNICO. Salva em um arquivo Excel com nome ÚNICO.
-    Retorna o caminho do arquivo.
-    """
+    # ... (código interno sem mudança) ...
     print(f"--- Lógica Interna: Salvamento (ÚNICO) ---")
     try:
         output_dir = "dados_saida"
@@ -171,10 +169,7 @@ def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
         print(f"Erro ao salvar arquivo Excel: {e}"); return f"Erro ao salvar: {e}"
 
 def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
-    """
-    LÓGICA INTERNA: MODO COMPILADO. Adiciona a um arquivo Excel mestre.
-    Retorna o caminho do arquivo mestre.
-    """
+    # ... (código interno sem mudança) ...
     print(f"--- Lógica Interna: Salvamento (COMPILADO) ---")
     try:
         output_dir = "dados_saida"

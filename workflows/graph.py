@@ -15,13 +15,13 @@ from tools.extracao import (
     extrair_texto_imagem, 
     extrair_texto_pdf, 
     extrair_texto_html,
-    salvar_dados_nota,  # <-- A ÚNICA ferramenta de salvar que o LLM vê
+    salvar_dados_nota,  # A única ferramenta de salvar que o LLM vê
     
     # Funções de lógica interna que o LLM NÃO VÊ
     salvar_dados_em_excel,
     acumular_dados_em_excel,
     
-    DadosNotaFiscal 
+    DadosNotaFiscal # O "molde" expandido
 )
 
 # Carregar as variáveis de ambiente (nosso .env)
@@ -29,13 +29,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- 2. Definir as Ferramentas para o Agente ---
-# A lista agora é menor. O LLM não sabe que existem dois modos de salvar.
 tools = [
     extrair_dados_xml, 
     extrair_texto_imagem, 
     extrair_texto_pdf, 
     extrair_texto_html,
-    salvar_dados_nota # <-- SÓ A FERRAMENTA GENÉRICA
+    salvar_dados_nota
 ]
 
 # --- 3. Definir o Modelo (LLM) ---
@@ -43,7 +42,7 @@ model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 model_with_tools = model.bind_tools(tools)
 
 # --- 4. Definir as Instruções (System Prompt) ---
-# O prompt agora é MAIS SIMPLES
+# --- MUDANÇA CRUCIAL: O PROMPT FOI ATUALIZADO ---
 system_prompt = """
 Você é um assistente especialista em processamento de notas fiscais brasileiras.
 Sua missão é seguir um processo de duas etapas:
@@ -51,36 +50,46 @@ Sua missão é seguir um processo de duas etapas:
 Etapa 1: Extração de Dados Brutos.
 - O usuário fornecerá o caminho para um arquivo (XML, PDF, HTML, PNG, JPG).
 - Você DEVE escolher a ferramenta de extração de dados CORRETA com base no tipo de arquivo.
-  - Para .xml, use 'extrair_dados_xml'.
-  - Para .pdf, use 'extrair_texto_pdf'.
-  - Para .html, use 'extrair_texto_html'.
-  - Para .png, .jpg, ou .jpeg, use 'extrair_texto_imagem'.
 - Você receberá o texto bruto extraído pela ferramenta.
 
 Etapa 2: Formatação e Salvamento.
-- Após receber o texto bruto, analise-o.
-- Extraia os campos principais: cnpj_emitente, nome_emitente, cnpj_cpf_destinatario, nome_destinatario, chave_acesso, e valor_total.
-- Use o seu conhecimento para limpar os dados.
+- Após receber o texto bruto, analise-o CUIDADOSAMENTE.
+- Você DEVE extrair todos os campos a seguir que conseguir encontrar. Se um campo não for encontrado, deixe-o nulo.
+- CAMPOS PARA EXTRAIR:
+  - chave_acesso
+  - numero_nf
+  - data_emissao
+  - cnpj_emitente
+  - nome_emitente
+  - endereco_emitente
+  - municipio_emitente
+  - cnpj_cpf_destinatario
+  - nome_destinatario
+  - endereco_destinatario
+  - municipio_destinatario
+  - valor_total (use o valor final/líquido, ex: 'Valor a pagar' ou 'Valor Total do Serviço')
+  - base_calculo
+  - valor_iss
+  - valor_icms
+  - discriminacao_servicos (se for uma nota de serviço)
+- Use o seu conhecimento para limpar os dados (ex: remover 'R$', manter apenas números em CNPJs, formatar valores como 1234.56).
 - Quando tiver todos os dados estruturados, você DEVE chamar a ferramenta 'salvar_dados_nota'.
-- O sistema interno cuidará de como salvar. Você não precisa se preocupar com isso.
 """
 
-# --- 5. Definir o "Estado" do Agente (A Memória) ---
+# --- 5. Definir o "Estado" do Agente (Sem mudanças) ---
 class AgentState(TypedDict):
     messages: Annotated[list, operator.add]
     file_path: str
     excel_file_path: Optional[str] = None
-    app_mode: str # Guarda 'single' ou 'accumulated'
+    app_mode: str 
 
-# --- 6. Definir os "Nós" do Gráfico (As Etapas) ---
+# --- 6. Definir os "Nós" do Gráfico (Sem mudanças) ---
 
-# Nó call_model (NÃO PRECISA MAIS INJETAR O MODO)
 def call_model(state: AgentState):
     """Chama o LLM para decidir o próximo passo."""
     print("--- Nó: call_model (Agente) ---")
     messages = state["messages"]
     
-    # Não precisamos mais injetar o modo! O prompt é sempre o mesmo.
     if len(messages) == 1:
         messages_with_prompt = [
             HumanMessage(content=system_prompt), 
@@ -92,7 +101,6 @@ def call_model(state: AgentState):
     response = model_with_tools.invoke(messages_with_prompt)
     return {"messages": [response]}
 
-# NÓ ATUALIZADO: call_tools (Onde a Mágica Acontece)
 def call_tools(state: AgentState):
     """Executa as ferramentas que o agente decidiu usar E faz o roteamento lógico."""
     print("--- Nó: call_tools (Ação) ---")
@@ -104,7 +112,7 @@ def call_tools(state: AgentState):
 
     tool_messages = []
     excel_path = state.get("excel_file_path") 
-    app_mode = state["app_mode"] # Pega o modo do estado
+    app_mode = state["app_mode"] 
 
     for tool_call in last_message.tool_calls:
         tool_name = tool_call["name"]
@@ -114,30 +122,24 @@ def call_tools(state: AgentState):
         try:
             resultado_msg_para_agente = ""
             
-            # --- MUDANÇA CRUCIAL: LÓGICA DE ROTEAMENTO ---
+            # Lógica de Roteamento (Sem mudanças)
             if tool_name == "salvar_dados_nota":
-                # O Agente chamou a ferramenta genérica.
-                # Agora NÓS (Python) vamos decidir qual função real chamar.
-                
                 print(f"Roteamento de salvamento. Modo atual: {app_mode}")
                 dados_pydantic = DadosNotaFiscal(**args['dados_nota'])
                 
                 if app_mode == 'single':
-                    # Chama a função de salvamento único
                     resultado = salvar_dados_em_excel(dados_pydantic) 
                 else: # 'accumulated'
-                    # Chama a função de salvamento acumulado
                     resultado = acumular_dados_em_excel(dados_pydantic)
                 
-                # Prepara a resposta
                 if not str(resultado).startswith("Erro"):
-                    excel_path = str(resultado) # Atualiza o estado
+                    excel_path = str(resultado) 
                     if app_mode == 'single':
                          resultado_msg_para_agente = f"Arquivo salvo com sucesso em: {excel_path}"
                     else:
                          resultado_msg_para_agente = f"Dados ACUMULADOS com sucesso em: {excel_path}"
                 else:
-                    resultado_msg_para_agente = str(resultado) # Passa a msg de erro
+                    resultado_msg_para_agente = str(resultado)
             
             # Ferramentas de extração (lógica normal)
             elif tool_name in ["extrair_dados_xml", "extrair_texto_imagem", "extrair_texto_pdf", "extrair_texto_html"]:
@@ -170,7 +172,7 @@ def should_continue(state: AgentState):
     return END
 
 # --- 8. Montar e Compilar o Gráfico (Sem mudanças) ---
-print("Compilando o workflow do agente (v2.9 - Roteador)...")
+print("Compilando o workflow do agente (v3.0 - Campos Expandidos)...")
 workflow = StateGraph(AgentState)
 workflow.add_node("agent", call_model)
 workflow.add_node("action", call_tools)
