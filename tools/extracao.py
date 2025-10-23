@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 # --- Configuração (Necessário para Windows) ---
 poppler_path = None # Deixe None se estiver no PATH
 
-# --- MUDANÇA CRUCIAL: O "MOLDE" DE DADOS FOI EXPANDIDO ---
+# --- "MOLDE" DE DADOS EXPANDIDO (v3.0) ---
 class DadosNotaFiscal(BaseModel):
     """
     Estrutura de dados para armazenar informações extraídas de uma nota fiscal.
@@ -48,38 +48,60 @@ class DadosNotaFiscal(BaseModel):
     # Detalhes (NF de Serviço)
     discriminacao_servicos: Optional[str] = Field(description="Texto que descreve os serviços prestados (ex: 'licenciamento ou direito de uso de programa de computador')")
 
+# --- Ferramentas de Extração (COM CORPO COMPLETO E DOCSTRINGS) ---
 
-# --- Ferramentas de Extração (Com @tool) ---
-# ... (as 4 ferramentas de extração: xml, imagem, pdf, html permanecem IDÊNTICAS) ...
 @tool
 def extrair_dados_xml(caminho_do_arquivo_xml: str) -> str:
-    # ... (código interno sem mudança) ...
+    """
+    Ferramenta especializada em ler um arquivo XML de NF-e (Nota Fiscal Eletrônica).
+    Recebe o CAMINHO para o arquivo .xml e extrai os campos principais.
+    Retorna uma string formatada com os dados da nota.
+    """
     print(f"--- Usando Ferramenta de Extração de XML ---")
     try:
         ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
-        tree = etree.parse(caminho_do_arquivo_xml); root = tree.getroot(); dados_nf = {}
-        chave_node = root.find('.//nfe:infNFe', ns);
+        tree = etree.parse(caminho_do_arquivo_xml)
+        root = tree.getroot()
+        dados_nf = {}
+
+        chave_node = root.find('.//nfe:infNFe', ns)
         if chave_node is not None: dados_nf['Chave de Acesso'] = chave_node.get('Id').replace('NFe', '')
-        cnpj_emitente_node = root.find('.//nfe:emit/nfe:CNPJ', ns);
+        
+        cnpj_emitente_node = root.find('.//nfe:emit/nfe:CNPJ', ns)
         if cnpj_emitente_node is not None: dados_nf['CNPJ Emitente'] = cnpj_emitente_node.text
-        nome_emitente_node = root.find('.//nfe:emit/nfe:xNome', ns);
+
+        nome_emitente_node = root.find('.//nfe:emit/nfe:xNome', ns)
         if nome_emitente_node is not None: dados_nf['Nome Emitente'] = nome_emitente_node.text
-        cnpj_dest_node = root.find('.//nfe:dest/nfe:CNPJ', ns); cpf_dest_node = root.find('.//nfe:dest/nfe:CPF', ns)
-        if cnpj_dest_node is not None: dados_nf['CNPJ/CPF Destinatario'] = cnpj_dest_node.text
-        elif cpf_dest_node is not None: dados_nf['CNPJ/CPF Destinatario'] = cpf_dest_node.text
-        nome_dest_node = root.find('.//nfe:dest/nfe:xNome', ns);
+
+        cnpj_dest_node = root.find('.//nfe:dest/nfe:CNPJ', ns)
+        cpf_dest_node = root.find('.//nfe:dest/nfe:CPF', ns)
+        if cnpj_dest_node is not None:
+            dados_nf['CNPJ/CPF Destinatario'] = cnpj_dest_node.text
+        elif cpf_dest_node is not None:
+            dados_nf['CNPJ/CPF Destinatario'] = cpf_dest_node.text
+
+        nome_dest_node = root.find('.//nfe:dest/nfe:xNome', ns)
         if nome_dest_node is not None: dados_nf['Nome Destinatario'] = nome_dest_node.text
-        valor_total_node = root.find('.//nfe:total/nfe:ICMSTot/nfe:vNF', ns);
+        
+        valor_total_node = root.find('.//nfe:total/nfe:ICMSTot/nfe:vNF', ns)
         if valor_total_node is not None: dados_nf['Valor Total NF'] = float(valor_total_node.text)
+
         resultado_formatado = "\n".join([f"{chave}: {valor}" for chave, valor in dados_nf.items()])
+        
         if not resultado_formatado: return "Não foi possível extrair dados estruturados do XML."
-        print("Dados do XML extraídos com sucesso!"); return resultado_formatado
+        
+        print("Dados do XML extraídos com sucesso!")
+        return resultado_formatado
     except Exception as e:
         print(f"Erro ao processar XML: {e}"); return f"Erro ao processar o arquivo XML: {e}"
 
 @tool
 def extrair_texto_imagem(caminho_do_arquivo_imagem: str) -> str:
-    # ... (código interno sem mudança) ...
+    """
+    Ferramenta especializada em ler texto de imagens (fotos, scans) de notas fiscais (.png, .jpg, .jpeg).
+    Usa OCR para extrair todo o texto contido nela.
+    Retorna uma string única com todo o texto bruto encontrado.
+    """
     print(f"--- Usando Ferramenta de Extração de Imagem (OCR) ---")
     try:
         img = cv2.imread(caminho_do_arquivo_imagem)
@@ -92,7 +114,11 @@ def extrair_texto_imagem(caminho_do_arquivo_imagem: str) -> str:
 
 @tool
 def extrair_texto_pdf(caminho_do_arquivo_pdf: str) -> str:
-    # ... (código interno sem mudança) ...
+    """
+    Ferramenta especializada em ler texto de arquivos PDF.
+    Converte cada página do PDF em uma imagem e usa OCR para extrair o texto.
+    Recebe o CAMINHO para o arquivo .pdf e retorna uma string única com todo o texto.
+    """
     print(f"--- Usando Ferramenta de Extração de PDF (OCR) ---")
     with tempfile.TemporaryDirectory() as path_temporario:
         try:
@@ -113,7 +139,11 @@ def extrair_texto_pdf(caminho_do_arquivo_pdf: str) -> str:
 
 @tool
 def extrair_texto_html(caminho_do_arquivo_html: str) -> str:
-    # ... (código interno sem mudança) ...
+    """
+    Ferramenta especializada em ler arquivos .html (arquivos .html salvos no disco).
+    "Raspa" (parse) o arquivo e extrai todo o texto visível.
+    Recebe o CAMINHO para o arquivo .html e retorna uma string com o texto limpo.
+    """
     print(f"--- Usando Ferramenta de Extração de HTML ---")
     try:
         conteudo = "";
@@ -152,7 +182,10 @@ def salvar_dados_nota(dados_nota: DadosNotaFiscal) -> str:
 # Elas automaticamente usarão o "molde" expandido de DadosNotaFiscal
 
 def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
-    # ... (código interno sem mudança) ...
+    """
+    LÓGICA INTERNA: MODO ÚNICO. Salva em um arquivo Excel com nome ÚNICO.
+    Retorna o caminho do arquivo.
+    """
     print(f"--- Lógica Interna: Salvamento (ÚNICO) ---")
     try:
         output_dir = "dados_saida"
@@ -169,7 +202,10 @@ def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
         print(f"Erro ao salvar arquivo Excel: {e}"); return f"Erro ao salvar: {e}"
 
 def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
-    # ... (código interno sem mudança) ...
+    """
+    LÓGICA INTERNA: MODO COMPILADO. Adiciona a um arquivo Excel mestre.
+    Retorna o caminho do arquivo mestre.
+    """
     print(f"--- Lógica Interna: Salvamento (COMPILADO) ---")
     try:
         output_dir = "dados_saida"
