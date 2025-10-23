@@ -6,25 +6,41 @@ from langchain_core.messages import HumanMessage
 
 # --- Configuração da Página ---
 st.set_page_config(
-    page_title="Agente Extrator de NF",
+    page_title="Meta Singularity - Agente NF",
     page_icon="🤖",
-    layout="centered",
+    layout="wide",
+    
+    # --- MUDANÇA AQUI ---
+    initial_sidebar_state="auto", # Era "expanded"
+    # --- FIM DA MUDANÇA ---
 )
 
-st.title("🤖 Agente Autônomo Extrator de Notas Fiscais")
-st.caption("Faça o upload de uma NF (.xml, .pdf, .html, .png, .jpg) e o agente irá processá-la.")
-
 # --- Diretórios ---
-# Precisamos de um local para salvar os arquivos de upload temporariamente
 UPLOAD_DIR = "dados_upload"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# O diretório de saída que nosso agente já usa
 OUTPUT_DIR = "dados_saida"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# --- Barra Lateral (Sidebar) ---
+with st.sidebar:
+    st.image("https://storage.googleapis.com/gen-ai-samples/images/google-logo-wordmark.svg", width=200)
+    st.title("Meta Singularity")
+    st.header("🤖 Agente Extrator de NF")
+    st.markdown("---")
+    st.markdown("Este projeto usa Agentes Autônomos (LangGraph) para ler, analisar e extrair dados de Notas Fiscais em múltiplos formatos.")
+    st.markdown("### 1. Faça o Upload")
+    st.markdown("Use a área de chat para enviar um arquivo (.xml, .pdf, .html, .png, .jpg).")
+    st.markdown("### 2. Aguarde o Processamento")
+    st.markdown("O Agente irá identificar o arquivo, extrair os dados e formatá-los.")
+    st.markdown("### 3. Baixe o Excel")
+    st.markdown("Um link para download do arquivo .xlsx aparecerá no chat.")
+    st.markdown("---")
+    st.caption("Repositório do Projeto: [GitHub](https://github.com/BruAmaralTec/projeto_nf_agente)") 
+
+# --- Título Principal (no topo da área de chat) ---
+st.header("Chat de Processamento de Notas Fiscais")
+
 # --- Memória de Chat do Streamlit ---
-# Vamos usar o 'st.session_state' para guardar o histórico da conversa e o ID da thread
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
     
@@ -33,14 +49,12 @@ if "messages" not in st.session_state:
     
 if "thread_config" not in st.session_state:
     st.session_state.thread_config = {"configurable": {"thread_id": st.session_state.session_id}}
-    
+
 # --- Renderização do Histórico de Chat ---
-# Mostra as mensagens antigas
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         
-        # Se for uma mensagem do assistente E tiver um arquivo Excel, mostra o botão de download
         if message["role"] == "assistant" and "excel_path" in message:
             excel_path = message["excel_path"]
             if os.path.exists(excel_path):
@@ -53,61 +67,50 @@ for message in st.session_state.messages:
                     )
 
 # --- Widget de Upload de Arquivo ---
-uploaded_file = st.file_uploader(
-    "Selecione o arquivo da Nota Fiscal:", 
-    type=["pdf", "xml", "html", "png", "jpg", "jpeg"]
+uploaded_file_widget = st.file_uploader(
+    "Faça o upload da sua Nota Fiscal aqui:", 
+    type=["pdf", "xml", "html", "png", "jpg", "jpeg"],
+    label_visibility="collapsed"
 )
 
-if uploaded_file is not None:
-    # 1. Salvar o arquivo temporariamente
-    # O agente precisa de um CAMINHO no disco, não de um objeto em memória
+
+if uploaded_file_widget is not None:
+    
+    uploaded_file = uploaded_file_widget 
     temp_file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
     with open(temp_file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    st.success(f"Arquivo '{uploaded_file.name}' carregado com sucesso!")
-
-    # 2. Criar o prompt para o agente
-    prompt = f"Por favor, processe esta nota fiscal. O caminho do arquivo é: {temp_file_path}"
+    prompt_tecnico = f"Por favor, processe esta nota fiscal. O caminho do arquivo é: {temp_file_path}"
+    prompt_bonito = f"Processando arquivo: `{uploaded_file.name}`"
     
-    # 3. Adicionar a mensagem humana ao chat
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": prompt_bonito})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(prompt_bonito)
 
-    # 4. Chamar o agente (o cérebro)
     with st.chat_message("assistant"):
         with st.spinner("O Agente está pensando... 🧠"):
             
-            # Prepara o estado inicial para o grafo
             estado_inicial = {
-                "messages": [HumanMessage(content=prompt)],
-                "file_path": temp_file_path, # O caminho do arquivo que salvamos
+                "messages": [HumanMessage(content=prompt_tecnico)],
+                "file_path": temp_file_path,
                 "excel_file_path": None
             }
             
-            # Invoca o agente!
-            # Usamos .invoke() aqui em vez de .stream() para obter a resposta final
             final_state = app.invoke(estado_inicial, config=st.session_state.thread_config)
 
-            # 5. Obter a resposta final
             response_message = final_state["messages"][-1]
             response_content = response_message.content
-            
-            # 6. Obter o caminho do Excel salvo
             excel_path_final = final_state.get("excel_file_path")
             
-            # 7. Mostrar a resposta e o botão de download
             st.markdown(response_content)
             
-            # Guarda a resposta no histórico
             st.session_state.messages.append({
                 "role": "assistant", 
                 "content": response_content,
-                "excel_path": excel_path_final # Guarda o caminho para renderizar o botão
+                "excel_path": excel_path_final
             })
             
-            # Se tiver um arquivo, mostra o botão de download IMEDIATAMENTE
             if excel_path_final and os.path.exists(excel_path_final):
                 with open(excel_path_final, "rb") as f:
                     st.download_button(
@@ -115,4 +118,7 @@ if uploaded_file is not None:
                         data=f,
                         file_name=os.path.basename(excel_path_final),
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"download_btn_{st.session_state.session_id}" 
                     )
+            
+            st.rerun()
