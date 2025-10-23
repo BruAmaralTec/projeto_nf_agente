@@ -1,0 +1,19 @@
+# Core LangChain/LangGraph
+langchain
+langgraph
+langchain-openai
+
+# Interface Web
+streamlit
+
+# Ferramentas de Extração
+pandas           # Para criar e manipular a planilha Excel
+openpyxl        # Para manipular o Excel (B.A)
+opencv-python-headless # Para processamento de imagem (OCR)
+pytesseract      # O "motor" do OCR, que lê texto em imagens
+lxml             # Para ler e extrair dados de arquivos XML e HTML
+pdf2image        # Adicionado para extração de PDF e HTML
+beautifulsoup4  # Adicionado para extração de PDF e HTML
+
+# Utilitários
+python-dotenv    # Para gerenciar nossa chave da API da OpenAI de forma segura

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+    <NFe>
+        <infNFe Id="NFe35230812345678000195550010000123451000123456" versao="4.00">
+            <ide>
+                <cUF>35</cUF>
+                <cNF>00012345</cNF>
+                <natOp>VENDA DE MERCADORIA</natOp>
+                <mod>55</mod>
+                <serie>1</serie>
+                <nNF>12345</nNF>
+                <dhEmi>2023-08-15T10:00:00-03:00</dhEmi>
+            </ide>
+            <emit>
+                <CNPJ>12345678000195</CNPJ>
+                <xNome>EMPRESA MODELO EMITENTE LTDA</xNome>
+                <enderEmit>
+                    <xLgr>RUA DAS FLORES</xLgr>
+                    <nro>123</nro>
+                    <xBairro>CENTRO</xBairro>
+                    <cMun>3550308</cMun>
+                    <xMun>SAO PAULO</xMun>
+                    <UF>SP</UF>
+                </enderEmit>
+            </emit>
+            <dest>
+                <CNPJ>98765432000180</CNPJ>
+                <xNome>EMPRESA DESTINATARIO EXEMPLO S.A.</xNome>
+                <enderDest>
+                    <xLgr>AVENIDA PRINCIPAL</xLgr>
+                    <nro>456</nro>
+                    <xBairro>VILA INDUSTRIAL</xBairro>
+                    <cMun>3509502</cMun>
+                    <xMun>CAMPINAS</xMun>
+                    <UF>SP</UF>
+                </enderDest>
+            </dest>
+            <det nItem="1">
+                <prod>
+                    <cProd>001</cProd>
+                    <xProd>PRODUTO DE TESTE</xProd>
+                    <NCM>84713000</NCM>
+                    <CFOP>5102</CFOP>
+                    <uCom>UN</uCom>
+                    <qCom>1.0000</qCom>
+                    <vUnCom>1250.00</vUnCom>
+                    <vProd>1250.00</vProd>
+                </prod>
+                <imposto>
+                    <ICMS>
+                        <ICMS00>
+                            <orig>0</orig>
+                            <CST>00</CST>
+                            <modBC>3</modBC>
+                            <vBC>1250.00</vBC>
+                            <pICMS>18.00</pICMS>
+                            <vICMS>225.00</vICMS>
+                        </ICMS00>
+                    </ICMS>
+                </imposto>
+            </det>
+            <total>
+                <ICMSTot>
+                    <vBC>1250.00</vBC>
+                    <vICMS>225.00</vICMS>
+                    <vBCST>0.00</vBCST>
+                    <vST>0.00</vST>
+                    <vProd>1250.00</vProd>
+                    <vFrete>0.00</vFrete>
+                    <vSeg>0.00</vSeg>
+                    <vDesc>0.00</vDesc>
+                    <vII>0.00</vII>
+                    <vIPI>0.00</vIPI>
+                    <vPIS>20.63</vPIS>
+                    <vCOFINS>95.00</vCOFINS>
+                    <vOutro>0.00</vOutro>
+                    <vNF>1475.00</vNF>
+                </ICMSTot>
+            </total>
+        </infNFe>
+    </NFe>
+</nfeProc>
