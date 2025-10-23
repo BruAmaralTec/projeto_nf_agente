@@ -48,7 +48,7 @@ class DadosNotaFiscal(BaseModel):
     # Detalhes (NF de Serviço)
     discriminacao_servicos: Optional[str] = Field(description="Texto que descreve os serviços prestados (ex: 'licenciamento ou direito de uso de programa de computador')")
 
-# --- Ferramentas de Extração (COM CORPO COMPLETO E DOCSTRINGS) ---
+# --- Ferramentas de Extração (Com corpo completo e docstrings) ---
 
 @tool
 def extrair_dados_xml(caminho_do_arquivo_xml: str) -> str:
@@ -178,26 +178,46 @@ def salvar_dados_nota(dados_nota: DadosNotaFiscal) -> str:
     return "Chamada de salvamento recebida."
 
 
-# --- Funções de Lógica Interna de Salvamento (Sem mudança) ---
-# Elas automaticamente usarão o "molde" expandido de DadosNotaFiscal
+# --- Funções de Lógica Interna de Salvamento ---
 
+# --- MUDANÇA CRUCIAL (v3.2) ESTÁ AQUI ---
 def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
     """
     LÓGICA INTERNA: MODO ÚNICO. Salva em um arquivo Excel com nome ÚNICO.
+    Usa o 'numero_nf' para o nome.
     Retorna o caminho do arquivo.
     """
     print(f"--- Lógica Interna: Salvamento (ÚNICO) ---")
     try:
         output_dir = "dados_saida"
         os.makedirs(output_dir, exist_ok=True)
-        dados_dict = dados_nota.model_dump(); df = pd.DataFrame([dados_dict])
-        chave_limpa = dados_dict.get('chave_acesso', 'sem_chave');
-        if not chave_limpa: chave_limpa = 'sem_chave'
-        nome_arquivo = f"nota_{chave_limpa.replace(' ', '_')}.xlsx"
+        
+        dados_dict = dados_nota.model_dump()
+        df = pd.DataFrame([dados_dict])
+        
+        # --- LÓGICA DE NOME DE ARQUIVO ATUALIZADA ---
+        # 1. Pega o numero_nf do dicionário
+        numero_nota = dados_dict.get('numero_nf')
+        
+        # 2. Verifica se o número foi encontrado e o limpa para um nome de arquivo seguro
+        if numero_nota:
+            # Remove caracteres inválidos para nomes de arquivo
+            numero_limpo = str(numero_nota).replace(' ', '_').replace('/', '-').replace('.', '')
+        else:
+            # Fallback (Plano B) se o 'numero_nf' for nulo ou vazio
+            numero_limpo = "sem_numero"
+        
+        # 3. Cria o novo nome do arquivo
+        nome_arquivo = f"NotaFiscal_{numero_limpo}.xlsx"
+        # --- FIM DA LÓGICA ATUALIZADA ---
+        
         caminho_completo = os.path.join(output_dir, nome_arquivo)
+        
         df.to_excel(caminho_completo, index=False)
+        
         print(f"Dados salvos com sucesso em: {caminho_completo}")
         return caminho_completo
+    
     except Exception as e:
         print(f"Erro ao salvar arquivo Excel: {e}"); return f"Erro ao salvar: {e}"
 
@@ -205,24 +225,10 @@ def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
     """
     LÓGICA INTERNA: MODO COMPILADO. Adiciona a um arquivo Excel mestre.
     Retorna o caminho do arquivo mestre.
+    (Esta função não foi alterada)
     """
     print(f"--- Lógica Interna: Salvamento (COMPILADO) ---")
     try:
         output_dir = "dados_saida"
         os.makedirs(output_dir, exist_ok=True)
         caminho_arquivo_mestre = os.path.join(output_dir, "COMPILADO_MESTRE.xlsx")
-        dados_dict = dados_nota.model_dump(); novo_df = pd.DataFrame([dados_dict])
-        
-        if os.path.exists(caminho_arquivo_mestre):
-            print("Arquivo mestre encontrado. Lendo dados existentes...")
-            df_existente = pd.read_excel(caminho_arquivo_mestre)
-            df_combinado = pd.concat([df_existente, novo_df], ignore_index=True)
-            df_combinado.to_excel(caminho_arquivo_mestre, index=False)
-            print("Dados adicionados ao arquivo mestre com sucesso.")
-        else:
-            print("Arquivo mestre não encontrado. Criando novo arquivo...")
-            novo_df.to_excel(caminho_arquivo_mestre, index=False)
-            print("Novo arquivo mestre criado com sucesso.")
-        return caminho_arquivo_mestre
-    except Exception as e:
-        print(f"Erro ao acumular dados no Excel: {e}"); return f"Erro ao acumular: {e}"
