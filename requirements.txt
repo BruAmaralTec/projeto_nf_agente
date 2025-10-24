@@ -17,3 +17,8 @@ beautifulsoup4  # Adicionado para extração de PDF e HTML
 
 # Utilitários
 python-dotenv    # Para gerenciar nossa chave da API da OpenAI de forma segura
+
+# Para a API
+fastapi
+uvicorn[standard]
+python-multipart # Necessário para FastAPI com UploadFile + Form
