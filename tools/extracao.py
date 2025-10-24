@@ -6,18 +6,20 @@ from langchain.tools import tool
 from PIL import Image
 import os
 import tempfile
-from typing import Optional, Tuple, Dict, Any # <-- Adicionado Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any
 
 # Novas importações
 from pdf2image import convert_from_path
 from bs4 import BeautifulSoup
-from pydantic import BaseModel, Field
+
+# --- MUDANÇA CRUCIAL: Importando explicitamente do Pydantic v1 ---
+from pydantic.v1 import BaseModel, Field # Era 'from pydantic import BaseModel, Field'
 
 # --- Configuração (Necessário para Windows) ---
 poppler_path = None # Deixe None se estiver no PATH
 
-# --- "MOLDE" DE DADOS EXPANDIDO (v3.0) ---
-class DadosNotaFiscal(BaseModel):
+# --- "MOLDE" DE DADOS EXPANDIDO (v3.0 - Agora usando Pydantic v1) ---
+class DadosNotaFiscal(BaseModel): # <-- Usa o BaseModel do v1
     """
     Estrutura de dados para armazenar informações extraídas de uma nota fiscal.
     Todos os campos são opcionais e serão preenchidos se encontrados.
@@ -166,7 +168,7 @@ def extrair_texto_html(caminho_do_arquivo_html: str) -> str:
 
 # --- Ferramenta Genérica de Salvamento (Sem mudança) ---
 @tool
-def salvar_dados_nota(dados_nota: DadosNotaFiscal) -> str:
+def salvar_dados_nota(dados_nota: DadosNotaFiscal) -> str: # <-- Recebe DadosNotaFiscal (v1)
     """
     Ferramenta GENÉRICA de salvamento. O Agente DEVE chamar esta ferramenta
     depois de extrair os dados da nota.
@@ -175,13 +177,12 @@ def salvar_dados_nota(dados_nota: DadosNotaFiscal) -> str:
     Retorna uma string de confirmação.
     """
     print(f"--- Ferramenta 'salvar_dados_nota' chamada pelo Agente ---")
-    # A resposta real (com o caminho e os dados) será construída pelo call_tools
     return "Chamada de salvamento recebida pelo sistema." 
 
 
 # --- Funções de Lógica Interna de Salvamento ---
 
-# --- MUDANÇA CRUCIAL (v3.7): Retornando Tupla (mensagem, dados_dict) ---
+# --- RETORNA TUPLA (v3.7) E USA PYDANTIC v1 ---
 def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     LÓGICA INTERNA: MODO ÚNICO. Salva em um arquivo Excel com nome ÚNICO.
@@ -189,15 +190,14 @@ def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> Tuple[str, Optional[Di
     Retorna uma TUPLA: (caminho do arquivo ou msg de erro, dicionário de dados ou None).
     """
     print(f"--- Lógica Interna: Salvamento (ÚNICO) ---")
-    dados_dict = None # Inicializa como None
+    dados_dict = None 
     try:
         output_dir = "dados_saida"
         os.makedirs(output_dir, exist_ok=True)
         
-        dados_dict = dados_nota.model_dump() # Converte para dict PRIMEIRO
+        dados_dict = dados_nota.dict() # <-- Usa .dict() para Pydantic v1
         df = pd.DataFrame([dados_dict])
         
-        # LÓGICA DE NOME DE ARQUIVO ATUALIZADA
         numero_nota = dados_dict.get('numero_nf')
         
         if numero_nota:
@@ -212,35 +212,30 @@ def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> Tuple[str, Optional[Di
         df.to_excel(caminho_completo, index=False)
         
         print(f"Dados salvos com sucesso em: {caminho_completo}")
-        # Retorna o caminho E o dicionário de dados
         return caminho_completo, dados_dict 
     
     except Exception as e:
-        print(f"Erro ao salvar arquivo Excel: {e}")
-        # Retorna a mensagem de erro E None para os dados
-        return f"Erro ao salvar: {e}", dados_dict # dados_dict pode ter sido criado antes do erro
+        print(f"Erro ao salvar arquivo Excel: {e}"); return f"Erro ao salvar: {e}", dados_dict
 
-# --- MUDANÇA CRUCIAL (v3.7): Retornando Tupla (mensagem, dados_dict) ---
+# --- RETORNA TUPLA (v3.7) E USA PYDANTIC v1 ---
 def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     LÓGICA INTERNA: MODO COMPILADO. Adiciona a um arquivo Excel mestre.
     Retorna uma TUPLA: (caminho do arquivo mestre ou msg de erro, dicionário de dados adicionados ou None).
     """
     print(f"--- Lógica Interna: Salvamento (COMPILADO) ---")
-    dados_dict = None # Inicializa como None
+    dados_dict = None
     try:
         output_dir = "dados_saida"
         os.makedirs(output_dir, exist_ok=True)
         caminho_arquivo_mestre = os.path.join(output_dir, "COMPILADO_MESTRE.xlsx")
         
-        dados_dict = dados_nota.model_dump() # Converte para dict PRIMEIRO
+        dados_dict = dados_nota.dict() # <-- Usa .dict() para Pydantic v1
         novo_df = pd.DataFrame([dados_dict])
         
         if os.path.exists(caminho_arquivo_mestre):
             print("Arquivo mestre encontrado. Lendo dados existentes...")
             df_existente = pd.read_excel(caminho_arquivo_mestre)
-            # Garante que as colunas sejam as mesmas, preenchendo com NaN se necessário
-            # Isso evita erros se uma nota tiver campos que a outra não tem
             colunas_todas = set(df_existente.columns) | set(novo_df.columns)
             df_existente = df_existente.reindex(columns=colunas_todas)
             novo_df = novo_df.reindex(columns=colunas_todas)
@@ -253,10 +248,7 @@ def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> Tuple[str, Optional[
             novo_df.to_excel(caminho_arquivo_mestre, index=False)
             print("Novo arquivo mestre criado com sucesso.")
             
-        # Retorna o caminho E o dicionário de dados
         return caminho_arquivo_mestre, dados_dict
         
     except Exception as e:
-        print(f"Erro ao acumular dados no Excel: {e}")
-        # Retorna a mensagem de erro E None para os dados
-        return f"Erro ao acumular: {e}", dados_dict # dados_dict pode ter sido criado antes do erro
+        print(f"Erro ao acumular dados no Excel: {e}"); return f"Erro ao acumular: {e}", dados_dict
