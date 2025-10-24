@@ -22,9 +22,11 @@ pytesseract      # O "motor" do OCR, que lê texto em imagens
 lxml             # Para ler e extrair dados de arquivos XML e HTML
 pdf2image        # Adicionado para extração de PDF e HTML
 beautifulsoup4  # Adicionado para extração de PDF e HTML
+unstructured
 
 # Utilitários
 python-dotenv    # Para gerenciar nossa chave da API da OpenAI de forma segura
+
 
 # Para a API
 fastapi

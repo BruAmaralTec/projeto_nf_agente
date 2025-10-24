@@ -1,15 +1,13 @@
 import streamlit as st
 import os
 import uuid
-# Renomeado para clareza, pois 'app' pode ser usado pelo FastAPI depois
-from workflows.graph import app as langgraph_app
+from workflows.graph import app as langgraph_app # Renomeado para clareza
 from langchain_core.messages import HumanMessage
 import time
 
 # --- Novas Importações para RAG ---
 # --- MUDANÇA CRUCIAL AQUI ---
-# Tentando o caminho de importação mais comum
-from langchain_community.document_loaders import MarkdownLoader
+from langchain_community.document_loaders import UnstructuredMarkdownLoader # Mudança para Unstructured
 # --- FIM DA MUDANÇA ---
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -75,13 +73,15 @@ def initialize_rag_pipeline():
         if not os.path.exists(doc_path):
              os.makedirs("docs", exist_ok=True)
              with open(doc_path, "w", encoding="utf-8") as f:
-                 # Conteúdo inicial do guia (simplificado)
                  f.write("# Guia API Meta Singularity NF Extract\n\nEndpoint: `/processar_nf/` (POST)\n\n")
                  f.write("Corpo: `multipart/form-data` com `file` (arquivo NF) e `mode` ('single'/'accumulated').\n\n")
                  f.write("Resposta: JSON com dados extraídos.\n")
 
-        loader = MarkdownLoader(doc_path)
+        # --- MUDANÇA CRUCIAL AQUI ---
+        loader = UnstructuredMarkdownLoader(doc_path) # Usando Unstructured
+        # --- FIM DA MUDANÇA ---
         docs = loader.load()
+
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=50)
         splits = text_splitter.split_documents(docs)
         embeddings = OpenAIEmbeddings()
@@ -127,7 +127,6 @@ def render_sidebar():
 # 1. TELA INICIAL
 if st.session_state.app_mode is None:
     st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
-    # ... (código da tela inicial sem mudanças) ...
     col_logo, col_title = st.columns([1, 3])
     with col_logo: st.image("assets/logo_meta_singularity.png", width=250)
     with col_title: st.title("Bem-vindo..."); st.header("Extração Inteligente de NF")
@@ -153,7 +152,6 @@ elif st.session_state.app_mode == "single":
         uploaded_file_widget = st.file_uploader("Upload NF:", type=["pdf", "xml", "html", "png", "jpg", "jpeg"], label_visibility="collapsed", key="uploader_single")
         if uploaded_file_widget is not None:
             st.session_state.file_just_processed = True
-            # --- Processamento (sem mudanças na lógica interna) ---
             uploaded_file = uploaded_file_widget; temp_file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}_{uploaded_file.name}")
             with open(temp_file_path, "wb") as f: f.write(uploaded_file.getbuffer())
             prompt_tecnico = f"Processar: {temp_file_path}"; prompt_bonito = f"Processando: `{uploaded_file.name}`"
@@ -193,7 +191,6 @@ elif st.session_state.app_mode == "accumulated":
             uploaded_file_widget = st.file_uploader("Upload próximo:", type=["pdf", "xml", "html", "png", "jpg", "jpeg"], label_visibility="collapsed", key="uploader_compiled_single")
             if uploaded_file_widget is not None:
                 st.session_state.file_just_processed = True
-                # --- Processamento (sem mudanças na lógica interna) ---
                 uploaded_file = uploaded_file_widget; temp_file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}_{uploaded_file.name}")
                 with open(temp_file_path, "wb") as f: f.write(uploaded_file.getbuffer())
                 prompt_tecnico = f"Processar: {temp_file_path}"; prompt_bonito = f"Acumulando: `{uploaded_file.name}`"
@@ -230,9 +227,7 @@ elif st.session_state.app_mode == "accumulated":
                     with open(temp_file_path, "wb") as f: f.write(uploaded_file.getbuffer())
                     prompt_bonito = f"Acumulando ({i+1}/{total_files}): `{file_name}`"
                     st.session_state.messages.append({"role": "user", "content": prompt_bonito})
-                    # Mostra a mensagem do usuário imediatamente
                     with st.chat_message("user"): st.markdown(prompt_bonito)
-                    # Processa e mostra a resposta do assistente
                     with st.chat_message("assistant"):
                         with st.spinner(f"Analisando {file_name}..."):
                              prompt_tecnico = f"Processar: {temp_file_path}"
@@ -242,7 +237,7 @@ elif st.session_state.app_mode == "accumulated":
                              last_excel_path = excel_path_final
                              st.markdown(response_content)
                              st.session_state.messages.append({"role": "assistant", "content": response_content, "excel_path": excel_path_final})
-                    time.sleep(0.1) # Delay menor
+                    time.sleep(0.1)
                 progress_bar.empty()
                 st.session_state.messages.append({"role": "assistant", "content": f"Processamento de {total_files} arquivos concluído.", "excel_path": last_excel_path})
                 st.rerun()
