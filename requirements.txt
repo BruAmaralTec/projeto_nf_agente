@@ -25,4 +25,7 @@ faiss-cpu
 unstructured
 markdown # <-- Adicionada aqui
 
-# Atualização forçada - [Data e Hora Atual - Substitua se usar]
+# Dependências da API
+fastapi
+uvicorn[standard] 
+python-multipart # Necessário para upload de arquivos no FastAPI
