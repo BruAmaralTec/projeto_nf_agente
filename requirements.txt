@@ -2,8 +2,13 @@
 langchain
 langgraph
 langchain-openai
-langchain-community
 
+# LangChain Core e Community (versões compatíveis)
+langchain-core>=0.1.52,<0.3.0
+langchain-community>=0.0.38,<0.3.0 
+langchain>=0.1.20,<0.3.0
+langchain-openai>=0.1.7,<0.2.0 
+# Adicione outras dependências do langchain se precisar delas explicitamente
 
 # Interface Web
 streamlit
