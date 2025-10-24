@@ -6,7 +6,7 @@ from langchain.tools import tool
 from PIL import Image
 import os
 import tempfile
-from typing import Optional
+from typing import Optional, Tuple, Dict, Any # <-- Adicionado Tuple, Dict, Any
 
 # Novas importações
 from pdf2image import convert_from_path
@@ -93,8 +93,7 @@ def extrair_dados_xml(caminho_do_arquivo_xml: str) -> str:
         print("Dados do XML extraídos com sucesso!")
         return resultado_formatado
     except Exception as e:
-        print(f"Erro ao processar XML: {e}")
-        return f"Erro ao processar o arquivo XML: {e}"
+        print(f"Erro ao processar XML: {e}"); return f"Erro ao processar o arquivo XML: {e}"
 
 @tool
 def extrair_texto_imagem(caminho_do_arquivo_imagem: str) -> str:
@@ -109,11 +108,9 @@ def extrair_texto_imagem(caminho_do_arquivo_imagem: str) -> str:
         img_cinza = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         texto_extraido = pytesseract.image_to_string(img_cinza, lang='por')
         if not texto_extraido: return "Nenhum texto encontrado na imagem."
-        print("Texto da imagem extraído com sucesso!")
-        return texto_extraido
+        print("Texto da imagem extraído com sucesso!"); return texto_extraido
     except Exception as e:
-        print(f"Erro ao processar imagem: {e}")
-        return f"Erro ao processar o arquivo de imagem: {e}."
+        print(f"Erro ao processar imagem: {e}"); return f"Erro ao processar o arquivo de imagem: {e}."
 
 @tool
 def extrair_texto_pdf(caminho_do_arquivo_pdf: str) -> str:
@@ -136,11 +133,9 @@ def extrair_texto_pdf(caminho_do_arquivo_pdf: str) -> str:
                 texto_pagina = pytesseract.image_to_string(img_cinza, lang='por')
                 texto_completo += f"\n--- Página {i+1} ---\n" + texto_pagina
             if not texto_completo: return "Nenhum texto encontrado no PDF."
-            print("Texto do PDF extraído com sucesso!")
-            return texto_completo
+            print("Texto do PDF extraído com sucesso!"); return texto_completo
         except Exception as e:
-            print(f"Erro ao processar PDF: {e}")
-            return f"Erro ao processar o arquivo PDF: {e}."
+            print(f"Erro ao processar PDF: {e}"); return f"Erro ao processar o arquivo PDF: {e}."
 
 @tool
 def extrair_texto_html(caminho_do_arquivo_html: str) -> str:
@@ -151,25 +146,23 @@ def extrair_texto_html(caminho_do_arquivo_html: str) -> str:
     """
     print(f"--- Usando Ferramenta de Extração de HTML ---")
     try:
-        conteudo = ""
+        conteudo = "";
         try:
             with open(caminho_do_arquivo_html, 'r', encoding='utf-8') as f: conteudo = f.read()
         except UnicodeDecodeError:
-            print("UTF-8 falhou, tentando latin-1...")
+            print("UTF-8 falhou, tentando latin-1...");
             with open(caminho_do_arquivo_html, 'r', encoding='latin-1') as f: conteudo = f.read()
         if not conteudo: return "Arquivo HTML vazio ou não pôde ser lido."
-        soup = BeautifulSoup(conteudo, 'lxml')
+        soup = BeautifulSoup(conteudo, 'lxml');
         for script_ou_style in soup(["script", "style"]): script_ou_style.decompose()
-        texto = soup.body.get_text()
+        texto = soup.body.get_text();
         linhas = (line.strip() for line in texto.splitlines())
         partes = (frase.strip() for linha in linhas for frase in linha.split("  "))
         texto_limpo = '\n'.join(p for p in partes if p)
         if not texto_limpo: return "Nenhum texto visível encontrado no arquivo HTML."
-        print("Texto do HTML extraído com sucesso!")
-        return texto_limpo
+        print("Texto do HTML extraído com sucesso!"); return texto_limpo
     except Exception as e:
-        print(f"Erro ao processar HTML: {e}")
-        return f"Erro ao processar o arquivo HTML: {e}"
+        print(f"Erro ao processar HTML: {e}"); return f"Erro ao processar o arquivo HTML: {e}"
 
 # --- Ferramenta Genérica de Salvamento (Sem mudança) ---
 @tool
@@ -182,24 +175,26 @@ def salvar_dados_nota(dados_nota: DadosNotaFiscal) -> str:
     Retorna uma string de confirmação.
     """
     print(f"--- Ferramenta 'salvar_dados_nota' chamada pelo Agente ---")
-    return "Chamada de salvamento recebida."
+    # A resposta real (com o caminho e os dados) será construída pelo call_tools
+    return "Chamada de salvamento recebida pelo sistema." 
 
 
 # --- Funções de Lógica Interna de Salvamento ---
 
-# --- LÓGICA DE NOME DE ARQUIVO (v3.2) ---
-def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
+# --- MUDANÇA CRUCIAL (v3.7): Retornando Tupla (mensagem, dados_dict) ---
+def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     LÓGICA INTERNA: MODO ÚNICO. Salva em um arquivo Excel com nome ÚNICO.
     Usa o 'numero_nf' para o nome.
-    Retorna o caminho do arquivo.
+    Retorna uma TUPLA: (caminho do arquivo ou msg de erro, dicionário de dados ou None).
     """
     print(f"--- Lógica Interna: Salvamento (ÚNICO) ---")
+    dados_dict = None # Inicializa como None
     try:
         output_dir = "dados_saida"
         os.makedirs(output_dir, exist_ok=True)
         
-        dados_dict = dados_nota.model_dump()
+        dados_dict = dados_nota.model_dump() # Converte para dict PRIMEIRO
         df = pd.DataFrame([dados_dict])
         
         # LÓGICA DE NOME DE ARQUIVO ATUALIZADA
@@ -217,28 +212,39 @@ def salvar_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
         df.to_excel(caminho_completo, index=False)
         
         print(f"Dados salvos com sucesso em: {caminho_completo}")
-        return caminho_completo
+        # Retorna o caminho E o dicionário de dados
+        return caminho_completo, dados_dict 
     
     except Exception as e:
         print(f"Erro ao salvar arquivo Excel: {e}")
-        return f"Erro ao salvar: {e}"
+        # Retorna a mensagem de erro E None para os dados
+        return f"Erro ao salvar: {e}", dados_dict # dados_dict pode ter sido criado antes do erro
 
-def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
+# --- MUDANÇA CRUCIAL (v3.7): Retornando Tupla (mensagem, dados_dict) ---
+def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     LÓGICA INTERNA: MODO COMPILADO. Adiciona a um arquivo Excel mestre.
-    Retorna o caminho do arquivo mestre.
-    (Esta função não foi alterada)
+    Retorna uma TUPLA: (caminho do arquivo mestre ou msg de erro, dicionário de dados adicionados ou None).
     """
     print(f"--- Lógica Interna: Salvamento (COMPILADO) ---")
+    dados_dict = None # Inicializa como None
     try:
         output_dir = "dados_saida"
         os.makedirs(output_dir, exist_ok=True)
         caminho_arquivo_mestre = os.path.join(output_dir, "COMPILADO_MESTRE.xlsx")
-        dados_dict = dados_nota.model_dump(); novo_df = pd.DataFrame([dados_dict])
+        
+        dados_dict = dados_nota.model_dump() # Converte para dict PRIMEIRO
+        novo_df = pd.DataFrame([dados_dict])
         
         if os.path.exists(caminho_arquivo_mestre):
             print("Arquivo mestre encontrado. Lendo dados existentes...")
             df_existente = pd.read_excel(caminho_arquivo_mestre)
+            # Garante que as colunas sejam as mesmas, preenchendo com NaN se necessário
+            # Isso evita erros se uma nota tiver campos que a outra não tem
+            colunas_todas = set(df_existente.columns) | set(novo_df.columns)
+            df_existente = df_existente.reindex(columns=colunas_todas)
+            novo_df = novo_df.reindex(columns=colunas_todas)
+            
             df_combinado = pd.concat([df_existente, novo_df], ignore_index=True)
             df_combinado.to_excel(caminho_arquivo_mestre, index=False)
             print("Dados adicionados ao arquivo mestre com sucesso.")
@@ -246,7 +252,11 @@ def acumular_dados_em_excel(dados_nota: DadosNotaFiscal) -> str:
             print("Arquivo mestre não encontrado. Criando novo arquivo...")
             novo_df.to_excel(caminho_arquivo_mestre, index=False)
             print("Novo arquivo mestre criado com sucesso.")
-        return caminho_arquivo_mestre
+            
+        # Retorna o caminho E o dicionário de dados
+        return caminho_arquivo_mestre, dados_dict
+        
     except Exception as e:
         print(f"Erro ao acumular dados no Excel: {e}")
-        return f"Erro ao acumular: {e}"
+        # Retorna a mensagem de erro E None para os dados
+        return f"Erro ao acumular: {e}", dados_dict # dados_dict pode ter sido criado antes do erro
