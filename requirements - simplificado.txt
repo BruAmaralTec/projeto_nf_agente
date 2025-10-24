@@ -1,0 +1,23 @@
+# Core LangChain/LangGraph - Deixe estes por enquanto
+langchain-core>=0.1.52,<0.3.0
+langchain-community>=0.0.38,<0.3.0 
+langchain>=0.1.20,<0.3.0
+langchain-openai>=0.1.7,<0.2.0 
+langgraph # Adicione '<0.1.0' se necessário para compatibilidade
+
+# Interface Web - ESSENCIAL
+streamlit
+
+# Ferramentas de Extração - COMENTE ESTAS TEMPORARIAMENTE
+# pandas           
+# opencv-python-headless 
+# pytesseract      
+# lxml             
+# pdf2image
+# beautifulsoup4
+
+# Utilitários - Deixe estes
+python-dotenv    
+# openpyxl # Comente se pandas estiver comentado
+
+# Atualização forçada - [24 10 25 17 41]
