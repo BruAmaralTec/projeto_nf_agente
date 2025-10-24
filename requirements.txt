@@ -1,36 +1,28 @@
 # Core LangChain/LangGraph
-langchain
-langgraph
-langchain-openai
-
-# LangChain Core e Community (versões compatíveis)
 langchain-core>=0.1.52,<0.3.0
 langchain-community>=0.0.38,<0.3.0 
 langchain>=0.1.20,<0.3.0
 langchain-openai>=0.1.7,<0.2.0 
-langgraph # ou langgraph<0.1.0 
-faiss-cpu # <-- ADICIONE ESTA LINHA para o Vector Store FAISS
+langgraph # ou langgraph<0.1.0 se necessário
 
 # Interface Web
 streamlit
 
 # Ferramentas de Extração
-pandas           # Para criar e manipular a planilha Excel
-openpyxl        # Para manipular o Excel (B.A)
-opencv-python-headless # Para processamento de imagem (OCR)
-pytesseract      # O "motor" do OCR, que lê texto em imagens
-lxml             # Para ler e extrair dados de arquivos XML e HTML
-pdf2image        # Adicionado para extração de PDF e HTML
-beautifulsoup4  # Adicionado para extração de PDF e HTML
-unstructured
+pandas           
+opencv-python-headless 
+pytesseract      
+lxml             
+pdf2image
+beautifulsoup4
 
 # Utilitários
-python-dotenv    # Para gerenciar nossa chave da API da OpenAI de forma segura
+python-dotenv    
+openpyxl 
 
+# Dependências RAG
+faiss-cpu 
+unstructured
+markdown # <-- Adicionada aqui
 
-# Para a API
-fastapi
-uvicorn[standard]
-python-multipart # Necessário para FastAPI com UploadFile + Form
-
-# Atualização forçada - [24.10.2025 17:31]
+# Atualização forçada - [Data e Hora Atual - Substitua se usar]
