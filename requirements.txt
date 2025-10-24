@@ -22,3 +22,4 @@ python-dotenv    # Para gerenciar nossa chave da API da OpenAI de forma segura
 fastapi
 uvicorn[standard]
 python-multipart # Necessário para FastAPI com UploadFile + Form
+langchain-community
