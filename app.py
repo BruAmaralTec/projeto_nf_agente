@@ -50,14 +50,12 @@ st.markdown(
 
 
     /* --- Botões FORA da Sidebar (Área Principal) --- */
-    /* Botões Padrão (Tipo 'secondary' - não usados explicitamente, mas bom definir) */
-    .stButton>button:not(:hover) {{
-         /* border: 1px solid {COR_BOTAO_PRINCIPAL}; */
-         /* background-color: white; */
-         /* color: {COR_BOTAO_PRINCIPAL}; */
+    /* Botões Padrão (Tipo 'secondary') */
+    .stButton>button:not([kind="primary"]):not(:hover) {{
+         /* Estilos opcionais para botões não primários fora da sidebar */
+         /* border: 1px solid gray; */
     }}
     /* Botões Primários (Tipo 'primary' - os verdes que usamos) */
-    /* Usar seletor mais genérico que não dependa tanto do cache do emotion */
     [data-testid="stButton"] button[kind="primary"],
     .st-emotion-cache-10qj7k0 /* Seletor antigo como fallback */
     {{
@@ -78,7 +76,7 @@ st.markdown(
     .st-emotion-cache-7ym5gk:hover {{ transform: scale(1.02); }}
 
 
-    /* --- MUDANÇA CRUCIAL: Botões DENTRO da Sidebar --- */
+    /* --- Botões DENTRO da Sidebar --- */
     [data-testid="stSidebar"] [data-testid="stButton"] button {{
         background-color: {COR_BOTAO_SIDEBAR} !important;
         color: {TEXTO_BOTAO_SIDEBAR} !important;
@@ -156,4 +154,194 @@ def initialize_rag_pipeline():
         st.session_state.rag_initialized = True
         return rag_chain
     except Exception as e:
-        st.
+        st.error(f"Erro RAG Init: {e}"); st.session_state.rag_initialized = False; return None
+
+# --- Funções de Renderização ---
+def render_chat_history(chat_type="agent"):
+    messages_key = "messages" if chat_type == "agent" else "rag_messages"
+    if messages_key not in st.session_state: st.session_state[messages_key] = []
+    for i, message in enumerate(st.session_state[messages_key]):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if chat_type == "agent" and message["role"] == "assistant" and "excel_path" in message:
+                excel_path = message["excel_path"]
+                # Adiciona verificação se excel_path existe e não é None
+                if excel_path and isinstance(excel_path, str) and os.path.exists(excel_path):
+                    try:
+                        with open(excel_path, "rb") as f:
+                            st.download_button(f"Download {os.path.basename(excel_path)}", f, os.path.basename(excel_path), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"hist_{chat_type}_{i}")
+                    except Exception as e:
+                        st.error(f"Erro ao ler arquivo para download: {e}")
+                elif excel_path:
+                    # Se o caminho existe mas o arquivo não, informa o usuário (pode acontecer no Streamlit Cloud)
+                    st.caption(f"Arquivo '{os.path.basename(excel_path)}' não encontrado para download.")
+
+
+def render_sidebar():
+    with st.sidebar:
+        st.image("assets/logo_meta_singularity.png", width=200)
+        st.title("Meta Singularity")
+        st.header("🤖 Agente Extrator de NF")
+        st.markdown("---")
+        if st.button("Guia Interativo da API", key="btn_goto_rag"):
+            st.session_state.app_mode = "rag_chatbot"
+            st.session_state.compiled_upload_method = None
+            st.session_state.file_just_processed = False
+            st.rerun()
+        st.markdown("---")
+        if st.session_state.app_mode not in [None, "rag_chatbot"]:
+            modo = "Único" if st.session_state.app_mode == "single" else "Compilado"
+            st.markdown(f"**Modo:** `{modo}`")
+            if st.session_state.compiled_upload_method:
+                sub = "Individual" if st.session_state.compiled_upload_method == 'single' else "Múltiplos"
+                st.markdown(f"**Upload:** `{sub}`")
+        if st.session_state.app_mode is not None: # Verifica se não é None antes de mostrar o botão
+            if st.button("Voltar ao Menu Principal"):
+                reset_to_main_menu()
+                st.rerun()
+        st.markdown("---")
+        st.caption("Repo: [GitHub](https://github.com/BruAmaralTec/projeto_nf_agent)") # Atualize se necessário
+        # LINHA 159 ESTÁ CORRETA AGORA (NÃO HÁ NADA A MAIS AQUI)
+
+# --- ROTEAMENTO PRINCIPAL ---
+
+# 1. TELA INICIAL
+if st.session_state.app_mode is None:
+    st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
+    col_logo, col_title = st.columns([1, 3])
+    with col_logo: st.image("assets/logo_meta_singularity.png", width=250)
+    with col_title: st.title("Bem-vindo..."); st.header("Extração Inteligente de NF")
+    st.markdown("---"); st.subheader("Selecione uma opção:")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        with st.container(border=True): st.markdown("### 1. Arquivo Único"); st.markdown("Gere um Excel por nota.")
+        if st.button("Processar Único", use_container_width=True, type="primary", key="btn_single_mode"): st.session_state.app_mode = "single"; st.session_state.compiled_upload_method = None; st.rerun()
+    with col2:
+        with st.container(border=True): st.markdown("### 2. Compilado"); st.markdown("Acumule em um Excel.")
+        if st.button("Processar Compilado", use_container_width=True, type="primary", key="btn_compiled_mode"): st.session_state.app_mode = "accumulated"; st.session_state.compiled_upload_method = None; st.rerun()
+    with col3:
+        with st.container(border=True): st.markdown("### 3. Guia API"); st.markdown("Aprenda a integrar.")
+        if st.button("Abrir Guia Interativo", use_container_width=True, type="primary", key="btn_rag_mode"): st.session_state.app_mode = "rag_chatbot"; st.session_state.compiled_upload_method = None; st.rerun()
+
+# 2. MODO ARQUIVO ÚNICO
+elif st.session_state.app_mode == "single":
+    render_sidebar(); st.header(f"Chat - Modo: Arquivo Único"); render_chat_history(chat_type="agent")
+    if st.session_state.file_just_processed:
+        st.info("Concluído.");
+        if st.button("Subir Novo", use_container_width=True, type="primary", key="reset_single"): st.session_state.file_just_processed = False; st.rerun()
+    else:
+        uploaded_file_widget = st.file_uploader("Upload NF:", type=["pdf", "xml", "html", "png", "jpg", "jpeg"], label_visibility="collapsed", key="uploader_single")
+        if uploaded_file_widget is not None:
+            st.session_state.file_just_processed = True
+            uploaded_file = uploaded_file_widget; temp_file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}_{uploaded_file.name}")
+            with open(temp_file_path, "wb") as f: f.write(uploaded_file.getbuffer())
+            prompt_tecnico = f"Processar: {temp_file_path}"; prompt_bonito = f"Processando: `{uploaded_file.name}`"
+            st.session_state.messages.append({"role": "user", "content": prompt_bonito})
+            with st.chat_message("user"): st.markdown(prompt_bonito)
+            with st.chat_message("assistant"):
+                with st.spinner("Agente pensando... 🧠"):
+                    estado_inicial = {"messages": [HumanMessage(content=prompt_tecnico)], "file_path": temp_file_path, "excel_file_path": None, "app_mode": "single"}
+                    if "thread_config" not in st.session_state: st.session_state.thread_config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+                    final_state = langgraph_app.invoke(estado_inicial, config=st.session_state.thread_config)
+                    response_message = final_state["messages"][-1]; response_content = response_message.content; excel_path_final = final_state.get("excel_file_path")
+                    st.markdown(response_content)
+                    st.session_state.messages.append({"role": "assistant", "content": response_content, "excel_path": excel_path_final})
+            st.rerun()
+
+# 3. MODO COMPILADO
+elif st.session_state.app_mode == "accumulated":
+    render_sidebar()
+    # 3.1 ESCOLHA DO MÉTODO
+    if st.session_state.compiled_upload_method is None:
+        st.header("Modo Compilado - Escolha o Método");
+        col1, col2 = st.columns(2)
+        with col1:
+            with st.container(border=True): st.markdown("#### A. Múltiplos"); st.markdown("Vários de uma vez.")
+            if st.button("Selecionar Múltiplos", use_container_width=True, key="btn_multi_select"): st.session_state.compiled_upload_method = 'multiple'; st.session_state.file_just_processed = False; st.rerun()
+        with col2:
+            with st.container(border=True): st.markdown("#### B. Individual"); st.markdown("Um por vez.")
+            if st.button("Subir Individualmente", use_container_width=True, key="btn_single_select"): st.session_state.compiled_upload_method = 'single'; st.session_state.file_just_processed = False; st.rerun()
+
+    # 3.2 MÉTODO: INDIVIDUAL
+    elif st.session_state.compiled_upload_method == 'single':
+        st.header(f"Chat - Modo: Compilado (Individual)"); render_chat_history(chat_type="agent")
+        if st.session_state.file_just_processed:
+            st.info("Dados acumulados.");
+            if st.button("Subir Próximo", use_container_width=True, type="primary", key="reset_compiled_single"): st.session_state.file_just_processed = False; st.rerun()
+        else:
+            uploaded_file_widget = st.file_uploader("Upload próximo:", type=["pdf", "xml", "html", "png", "jpg", "jpeg"], label_visibility="collapsed", key="uploader_compiled_single")
+            if uploaded_file_widget is not None:
+                st.session_state.file_just_processed = True
+                uploaded_file = uploaded_file_widget; temp_file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}_{uploaded_file.name}")
+                with open(temp_file_path, "wb") as f: f.write(uploaded_file.getbuffer())
+                prompt_tecnico = f"Processar: {temp_file_path}"; prompt_bonito = f"Acumulando: `{uploaded_file.name}`"
+                st.session_state.messages.append({"role": "user", "content": prompt_bonito})
+                with st.chat_message("user"): st.markdown(prompt_bonito)
+                with st.chat_message("assistant"):
+                    with st.spinner("Agente acumulando... 🧠"):
+                        estado_inicial = {"messages": [HumanMessage(content=prompt_tecnico)], "file_path": temp_file_path, "excel_file_path": None, "app_mode": "accumulated"}
+                        if "thread_config" not in st.session_state: st.session_state.thread_config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+                        final_state = langgraph_app.invoke(estado_inicial, config=st.session_state.thread_config)
+                        response_message = final_state["messages"][-1]; response_content = response_message.content; excel_path_final = final_state.get("excel_file_path")
+                        st.markdown(response_content)
+                        st.session_state.messages.append({"role": "assistant", "content": response_content, "excel_path": excel_path_final})
+                st.rerun()
+
+    # 3.3 MÉTODO: MÚLTIPLO
+    elif st.session_state.compiled_upload_method == 'multiple':
+        st.header(f"Chat - Modo: Compilado (Múltiplos)"); render_chat_history(chat_type="agent")
+        if st.session_state.file_just_processed:
+            st.success("Arquivos processados!");
+            if st.button("Subir Novo Lote", use_container_width=True, type="primary", key="reset_compiled_multiple"): st.session_state.file_just_processed = False; st.rerun()
+        else:
+            uploaded_files_widget = st.file_uploader("Selecione múltiplos arquivos:", type=["pdf", "xml", "html", "png", "jpg", "jpeg"], accept_multiple_files=True, label_visibility="collapsed", key="uploader_compiled_multiple")
+            if uploaded_files_widget:
+                st.session_state.file_just_processed = True
+                total_files = len(uploaded_files_widget); st.info(f"Processando {total_files} arquivos...")
+                progress_bar = st.progress(0, text="Iniciando...")
+                last_excel_path = None
+                if "thread_config" not in st.session_state: st.session_state.thread_config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+                for i, uploaded_file in enumerate(uploaded_files_widget):
+                    file_name = uploaded_file.name; progress_text = f"Processando {i+1}/{total_files}: {file_name}"
+                    progress_bar.progress((i + 1) / total_files, text=progress_text)
+                    temp_file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}_{file_name}")
+                    with open(temp_file_path, "wb") as f: f.write(uploaded_file.getbuffer())
+                    prompt_bonito = f"Acumulando ({i+1}/{total_files}): `{file_name}`"
+                    st.session_state.messages.append({"role": "user", "content": prompt_bonito})
+                    with st.chat_message("user"): st.markdown(prompt_bonito)
+                    with st.chat_message("assistant"):
+                        with st.spinner(f"Analisando {file_name}..."):
+                             prompt_tecnico = f"Processar: {temp_file_path}"
+                             estado_inicial = {"messages": [HumanMessage(content=prompt_tecnico)], "file_path": temp_file_path, "excel_file_path": None, "app_mode": "accumulated"}
+                             final_state = langgraph_app.invoke(estado_inicial, config=st.session_state.thread_config)
+                             response_message = final_state["messages"][-1]; response_content = response_message.content; excel_path_final = final_state.get("excel_file_path")
+                             last_excel_path = excel_path_final
+                             st.markdown(response_content)
+                             st.session_state.messages.append({"role": "assistant", "content": response_content, "excel_path": excel_path_final})
+                    time.sleep(0.1)
+                progress_bar.empty()
+                st.session_state.messages.append({"role": "assistant", "content": f"Processamento de {total_files} arquivos concluído.", "excel_path": last_excel_path})
+                st.rerun()
+
+# 4. MODO CHATBOT GUIA API (RAG)
+elif st.session_state.app_mode == "rag_chatbot":
+    render_sidebar()
+    st.header("Guia Interativo da API Meta Singularity")
+    st.caption("Faça perguntas sobre como usar nossa API de extração de NF.")
+
+    if not st.session_state.rag_initialized:
+        with st.spinner("Preparando assistente... 🤖"): st.session_state.rag_chain = initialize_rag_pipeline()
+    
+    render_chat_history(chat_type="rag")
+
+    if prompt := st.chat_input("Pergunte sobre a API..."):
+        st.session_state.rag_messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"): st.markdown(prompt)
+        with st.chat_message("assistant"):
+            if st.session_state.rag_chain:
+                with st.spinner("Buscando..."):
+                    response = st.session_state.rag_chain.invoke(prompt)
+                    st.markdown(response)
+                    st.session_state.rag_messages.append({"role": "assistant", "content": response})
+            else:
+                st.error("Assistente RAG não inicializado."); st.session_state.rag_messages.append({"role": "assistant", "content": "Não consigo responder."})
