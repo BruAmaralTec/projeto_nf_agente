@@ -1,0 +1,32 @@
+# Ignora o ambiente virtual
+.venv/
+
+# Ignora caches do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignora arquivos de configuração de IDEs e ferramentas
+.vscode/
+.idea/
+*.swp
+
+# Ignora o diretório Git
+.git/
+.gitignore
+
+# Ignora arquivos .env (segurança)
+.env*
+
+# Ignora arquivos de teste e dados temporários gerados localmente
+dados_teste/
+dados_upload/
+dados_saida/
+api_uploads/
+teste_output.xlsx
+*.log
+
+# Ignora o próprio Dockerfile e dockerignore se necessário (geralmente não)
+# Dockerfile
+# .dockerignore
