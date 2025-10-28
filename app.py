@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 import time
 
 # --- Novas Importações para RAG ---
-from langchain_community.document_loaders import UnstructuredMarkdownLoader # Mudança para Unstructured
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -15,7 +15,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain.prompts import ChatPromptTemplate
 
-# --- CSS Personalizado ---
+# --- CSS Personalizado (Sem mudanças) ---
 NOVA_COR_PRIMARIA_SIDEBAR = "#C0FF72" # Verde claro para sidebar
 COR_BOTAO_PRINCIPAL = "#A9E64B"      # Verde médio para botões principais
 COR_BOTAO_HOVER = "#98CC42"          # Verde escuro para hover principal
@@ -28,71 +28,39 @@ st.markdown(
     f"""
     <style>
     /* --- Estilos Gerais --- */
-    body {{
-        color: #333333; /* Cor de texto padrão um pouco mais escura */
-    }}
+    body {{ color: #333333; }}
 
     /* --- Barra Lateral --- */
-    [data-testid="stSidebar"] {{
-        background-color: {NOVA_COR_PRIMARIA_SIDEBAR};
-        color: {TEXTO_COR_SIDEBAR};
-    }}
-    [data-testid="stSidebar"] .st-emotion-cache-1pxjwj4 {{ /* Ajuste seletor se necessário */
-        color: {TEXTO_COR_SIDEBAR};
-    }}
-    /* Link do GitHub na sidebar */
-     [data-testid="stSidebar"] .stCaption a {{
-         color: #1E88E5 !important; /* Azul para links */
-     }}
-     [data-testid="stSidebar"] .stCaption a:hover {{
-         color: #0D47A1 !important; /* Azul mais escuro no hover */
-     }}
+    [data-testid="stSidebar"] {{ background-color: {NOVA_COR_PRIMARIA_SIDEBAR}; color: {TEXTO_COR_SIDEBAR}; }}
+    [data-testid="stSidebar"] .st-emotion-cache-1pxjwj4 {{ color: {TEXTO_COR_SIDEBAR}; }}
+    [data-testid="stSidebar"] .stCaption a {{ color: #1E88E5 !important; }}
+    [data-testid="stSidebar"] .stCaption a:hover {{ color: #0D47A1 !important; }}
 
-
-    /* --- Botões FORA da Sidebar (Área Principal) --- */
-    /* Botões Padrão (Tipo 'secondary') */
-    .stButton>button:not([kind="primary"]):not(:hover) {{
-         /* Estilos opcionais para botões não primários fora da sidebar */
-         /* border: 1px solid gray; */
+    /* --- Botões FORA da Sidebar --- */
+    [data-testid="stButton"] button[kind="secondary"], .stButton>button:not([kind="primary"]):not(:hover) {{ /* Estilo opcional */ }}
+    [data-testid="stButton"] button[kind="primary"], .st-emotion-cache-10qj7k0 {{
+        background-color: {COR_BOTAO_PRINCIPAL} !important; color: {TEXTO_COR_SIDEBAR} !important;
+        border: 1px solid {COR_BOTAO_HOVER}; transition: background-color 0.2s ease, border-color 0.2s ease;
     }}
-    /* Botões Primários (Tipo 'primary' - os verdes que usamos) */
-    [data-testid="stButton"] button[kind="primary"],
-    .st-emotion-cache-10qj7k0 /* Seletor antigo como fallback */
-    {{
-        background-color: {COR_BOTAO_PRINCIPAL} !important;
-        color: {TEXTO_COR_SIDEBAR} !important; /* Texto preto combina bem */
-        border: 1px solid {COR_BOTAO_HOVER};
-        transition: background-color 0.2s ease, border-color 0.2s ease;
-    }}
-    [data-testid="stButton"] button[kind="primary"]:hover,
-    .st-emotion-cache-10qj7k0:hover
-    {{
-        background-color: {COR_BOTAO_HOVER} !important;
-        border-color: {COR_BOTAO_HOVER};
+    [data-testid="stButton"] button[kind="primary"]:hover, .st-emotion-cache-10qj7k0:hover {{
+        background-color: {COR_BOTAO_HOVER} !important; border-color: {COR_BOTAO_HOVER};
         color: {TEXTO_COR_SIDEBAR} !important;
     }}
-     /* Botões da tela inicial (animação) */
     .st-emotion-cache-7ym5gk {{ transition: transform 0.1s ease-in-out; }}
     .st-emotion-cache-7ym5gk:hover {{ transform: scale(1.02); }}
 
-
     /* --- Botões DENTRO da Sidebar --- */
     [data-testid="stSidebar"] [data-testid="stButton"] button {{
-        background-color: {COR_BOTAO_SIDEBAR} !important;
-        color: {TEXTO_BOTAO_SIDEBAR} !important;
-        border: 1px solid {COR_BOTAO_SIDEBAR_HOVER};
-        transition: background-color 0.2s ease, border-color 0.2s ease;
+        background-color: {COR_BOTAO_SIDEBAR} !important; color: {TEXTO_BOTAO_SIDEBAR} !important;
+        border: 1px solid {COR_BOTAO_SIDEBAR_HOVER}; transition: background-color 0.2s ease, border-color 0.2s ease;
     }}
     [data-testid="stSidebar"] [data-testid="stButton"] button:hover {{
-        background-color: {COR_BOTAO_SIDEBAR_HOVER} !important;
-        border-color: {COR_BOTAO_SIDEBAR_HOVER};
+        background-color: {COR_BOTAO_SIDEBAR_HOVER} !important; border-color: {COR_BOTAO_SIDEBAR_HOVER};
         color: {TEXTO_BOTAO_SIDEBAR} !important;
     }}
 
-    /* Ajuste fino para texto do chat, se necessário */
-    [data-testid="stChatMessage"] p {{
-        color: #111111;
-    }}
+    /* --- Texto do Chat --- */
+    [data-testid="stChatMessage"] p {{ color: #111111; }}
     </style>
     """,
     unsafe_allow_html=True
@@ -100,20 +68,13 @@ st.markdown(
 
 
 # --- Configuração da Página (Sem mudanças) ---
-st.set_page_config(
-    page_title="Meta Singularity - Agente NF",
-    page_icon="assets/logo_meta_singularity.png",
-    layout="wide",
-    initial_sidebar_state="auto",
-)
+st.set_page_config( page_title="Meta Singularity - Agente NF", page_icon="assets/logo_meta_singularity.png", layout="wide", initial_sidebar_state="auto")
 
 # --- Diretórios (Sem mudanças) ---
-UPLOAD_DIR = "dados_upload"
-OUTPUT_DIR = "dados_saida"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+UPLOAD_DIR = "dados_upload"; OUTPUT_DIR = "dados_saida"
+os.makedirs(UPLOAD_DIR, exist_ok=True); os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# --- Gerenciamento de Estado Principal ---
+# --- Gerenciamento de Estado Principal (Sem mudanças) ---
 if "app_mode" not in st.session_state: st.session_state.app_mode = None
 if "compiled_upload_method" not in st.session_state: st.session_state.compiled_upload_method = None
 if "file_just_processed" not in st.session_state: st.session_state.file_just_processed = False
@@ -122,24 +83,21 @@ if "rag_chain" not in st.session_state: st.session_state.rag_chain = None
 if "rag_messages" not in st.session_state: st.session_state.rag_messages = []
 
 
-# --- Funções Auxiliares ---
+# --- Funções Auxiliares (Sem mudanças) ---
 def reset_to_main_menu():
     st.session_state.app_mode = None; st.session_state.compiled_upload_method = None
     st.session_state.messages = []; st.session_state.rag_messages = []
     st.session_state.file_just_processed = False
 
-# --- Funções RAG ---
+# --- Funções RAG (Sem mudanças na lógica interna) ---
 @st.cache_resource
 def initialize_rag_pipeline():
     try:
         doc_path = "docs/api_guide.md"
-        if not os.path.exists(doc_path):
+        if not os.path.exists(doc_path): # Cria guia inicial se não existir
              os.makedirs("docs", exist_ok=True)
              with open(doc_path, "w", encoding="utf-8") as f:
-                 f.write("# Guia API Meta Singularity NF Extract\n\nEndpoint: `/processar_nf/` (POST)\n\n")
-                 f.write("Corpo: `multipart/form-data` com `file` (arquivo NF) e `mode` ('single'/'accumulated').\n\n")
-                 f.write("Resposta: JSON com dados extraídos.\n")
-
+                 f.write("# Guia API Meta Singularity NF Extract\n\nEndpoint: `/processar_nf/` (POST)\n\n...") # Conteúdo básico
         loader = UnstructuredMarkdownLoader(doc_path)
         docs = loader.load()
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=50)
@@ -156,7 +114,7 @@ def initialize_rag_pipeline():
     except Exception as e:
         st.error(f"Erro RAG Init: {e}"); st.session_state.rag_initialized = False; return None
 
-# --- Funções de Renderização ---
+# --- Funções de Renderização (Sem mudanças na lógica interna) ---
 def render_chat_history(chat_type="agent"):
     messages_key = "messages" if chat_type == "agent" else "rag_messages"
     if messages_key not in st.session_state: st.session_state[messages_key] = []
@@ -165,50 +123,31 @@ def render_chat_history(chat_type="agent"):
             st.markdown(message["content"])
             if chat_type == "agent" and message["role"] == "assistant" and "excel_path" in message:
                 excel_path = message["excel_path"]
-                # Adiciona verificação se excel_path existe e não é None
                 if excel_path and isinstance(excel_path, str) and os.path.exists(excel_path):
                     try:
                         with open(excel_path, "rb") as f:
                             st.download_button(f"Download {os.path.basename(excel_path)}", f, os.path.basename(excel_path), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"hist_{chat_type}_{i}")
-                    except Exception as e:
-                        st.error(f"Erro ao ler arquivo para download: {e}")
-                elif excel_path:
-                    # Se o caminho existe mas o arquivo não, informa o usuário (pode acontecer no Streamlit Cloud)
-                    st.caption(f"Arquivo '{os.path.basename(excel_path)}' não encontrado para download.")
-
+                    except Exception as e: st.error(f"Erro ao ler download: {e}")
+                elif excel_path: st.caption(f"Arquivo '{os.path.basename(excel_path)}' não encontrado.")
 
 def render_sidebar():
     with st.sidebar:
-        st.image("assets/logo_meta_singularity.png", width=200)
-        st.title("Meta Singularity")
-        st.header("🤖 Agente Extrator de NF")
-        st.markdown("---")
-        if st.button("Guia Interativo da API", key="btn_goto_rag"):
-            st.session_state.app_mode = "rag_chatbot"
-            st.session_state.compiled_upload_method = None
-            st.session_state.file_just_processed = False
-            st.rerun()
+        st.image("assets/logo_meta_singularity.png", width=200); st.title("Meta Singularity"); st.header("🤖 Agente Extrator de NF"); st.markdown("---")
+        if st.button("Guia Interativo da API", key="btn_goto_rag"): st.session_state.app_mode = "rag_chatbot"; st.session_state.compiled_upload_method = None; st.session_state.file_just_processed = False; st.rerun()
         st.markdown("---")
         if st.session_state.app_mode not in [None, "rag_chatbot"]:
-            modo = "Único" if st.session_state.app_mode == "single" else "Compilado"
-            st.markdown(f"**Modo:** `{modo}`")
-            if st.session_state.compiled_upload_method:
-                sub = "Individual" if st.session_state.compiled_upload_method == 'single' else "Múltiplos"
-                st.markdown(f"**Upload:** `{sub}`")
-        if st.session_state.app_mode is not None: # Verifica se não é None antes de mostrar o botão
-            if st.button("Voltar ao Menu Principal"):
-                reset_to_main_menu()
-                st.rerun()
-        st.markdown("---")
-        st.caption("Repo: [GitHub](https://github.com/BruAmaralTec/projeto_nf_agent)") # Atualize se necessário
-        # LINHA 159 ESTÁ CORRETA AGORA (NÃO HÁ NADA A MAIS AQUI)
+            modo = "Único" if st.session_state.app_mode == "single" else "Compilado"; st.markdown(f"**Modo:** `{modo}`")
+            if st.session_state.compiled_upload_method: sub = "Individual" if st.session_state.compiled_upload_method == 'single' else "Múltiplos"; st.markdown(f"**Upload:** `{sub}`")
+        if st.session_state.app_mode is not None:
+            if st.button("Voltar ao Menu Principal"): reset_to_main_menu(); st.rerun()
+        st.markdown("---"); st.caption("Repo: [GitHub](https://github.com/BruAmaralTec/projeto_nf_agent)") # Atualize
 
 # --- ROTEAMENTO PRINCIPAL ---
 
-# 1. TELA INICIAL
+# 1. TELA INICIAL (Sem mudanças)
 if st.session_state.app_mode is None:
     st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
-    col_logo, col_title = st.columns([1, 3])
+    col_logo, col_title = st.columns([1, 3]);
     with col_logo: st.image("assets/logo_meta_singularity.png", width=250)
     with col_title: st.title("Bem-vindo..."); st.header("Extração Inteligente de NF")
     st.markdown("---"); st.subheader("Selecione uma opção:")
@@ -223,7 +162,7 @@ if st.session_state.app_mode is None:
         with st.container(border=True): st.markdown("### 3. Guia API"); st.markdown("Aprenda a integrar.")
         if st.button("Abrir Guia Interativo", use_container_width=True, type="primary", key="btn_rag_mode"): st.session_state.app_mode = "rag_chatbot"; st.session_state.compiled_upload_method = None; st.rerun()
 
-# 2. MODO ARQUIVO ÚNICO
+# 2. MODO ARQUIVO ÚNICO (Sem mudanças)
 elif st.session_state.app_mode == "single":
     render_sidebar(); st.header(f"Chat - Modo: Arquivo Único"); render_chat_history(chat_type="agent")
     if st.session_state.file_just_processed:
@@ -248,7 +187,7 @@ elif st.session_state.app_mode == "single":
                     st.session_state.messages.append({"role": "assistant", "content": response_content, "excel_path": excel_path_final})
             st.rerun()
 
-# 3. MODO COMPILADO
+# 3. MODO COMPILADO (Sem mudanças)
 elif st.session_state.app_mode == "accumulated":
     render_sidebar()
     # 3.1 ESCOLHA DO MÉTODO
@@ -323,23 +262,47 @@ elif st.session_state.app_mode == "accumulated":
                 st.session_state.messages.append({"role": "assistant", "content": f"Processamento de {total_files} arquivos concluído.", "excel_path": last_excel_path})
                 st.rerun()
 
+# --- MUDANÇA CRUCIAL: Seção RAG Aprimorada ---
 # 4. MODO CHATBOT GUIA API (RAG)
 elif st.session_state.app_mode == "rag_chatbot":
     render_sidebar()
-    st.header("Guia Interativo da API Meta Singularity")
-    st.caption("Faça perguntas sobre como usar nossa API de extração de NF.")
+    st.header("Guia Interativo e Documentação da API")
+    
+    st.markdown("""
+    Esta seção ajuda você a integrar nosso Agente Extrator de NF em seus próprios sistemas usando nossa API pública. 
+    Abaixo você encontra a URL da API e um link para a documentação interativa (Swagger UI), onde você pode 
+    testar os endpoints diretamente.
+    """)
+    
+    st.warning("**Recomendamos verificar a documentação antes de usar o chat para economizar tokens.**", icon="💡")
 
+    # Informações da API
+    api_url = "https://meta-singularity-api-nf-agente.onrender.com" # Sua URL pública
+    docs_url = f"{api_url}/docs"
+
+    st.subheader("URL da API:")
+    st.code(f"{api_url}/processar_nf/", language=None)
+    
+    st.link_button("Acessar Documentação Interativa e Testes (Swagger UI) ↗️", docs_url)
+    
+    st.markdown("---")
+    st.subheader("Assistente de Integração (Chatbot RAG)")
+    st.caption("Se tiver dúvidas específicas após consultar a documentação, pergunte abaixo!")
+
+    # Inicializa a pipeline RAG
     if not st.session_state.rag_initialized:
         with st.spinner("Preparando assistente... 🤖"): st.session_state.rag_chain = initialize_rag_pipeline()
     
+    # Renderiza histórico do chat RAG
     render_chat_history(chat_type="rag")
 
-    if prompt := st.chat_input("Pergunte sobre a API..."):
+    # Input do usuário para o chat RAG
+    if prompt := st.chat_input("Pergunte sobre a API (ex: 'Qual o formato da resposta?')"):
         st.session_state.rag_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
         with st.chat_message("assistant"):
             if st.session_state.rag_chain:
-                with st.spinner("Buscando..."):
+                with st.spinner("Buscando informações..."):
                     response = st.session_state.rag_chain.invoke(prompt)
                     st.markdown(response)
                     st.session_state.rag_messages.append({"role": "assistant", "content": response})
