@@ -1,6 +1,6 @@
-# Guia da API Meta Singularity NF Extract v1.0
+# Guia da API Meta Singularity NF Extract v1.2
 
-Bem-vindo ao guia da API para o Agente Extrator de Notas Fiscais da Meta Singularity. Esta API permite processar arquivos de notas fiscais (PDF, XML, Imagens, HTML) e receber os dados extraídos em formato JSON.
+Bem-vindo ao guia da API para o Agente Extrator de Notas Fiscais da Meta Singularity. Esta API utiliza um agente de Inteligência Artificial (construído com LangGraph e OpenAI) para processar arquivos de notas fiscais (PDF, XML, Imagens, HTML) e retornar os dados extraídos em formato JSON.
 
 ## URL Base
 
@@ -19,7 +19,7 @@ Existe um único endpoint principal para o processamento:
 
 ## Autenticação
 
-Atualmente (v1.0), a API não requer autenticação.
+Atualmente (v1.2), a API não requer autenticação.
 
 ## Corpo da Requisição (Input)
 
@@ -32,18 +32,21 @@ A requisição deve ser enviada como `multipart/form-data` e conter dois campos:
 
 2.  **`mode`**:
     * **Tipo:** String (texto)
-    * **Descrição:** Define o modo de operação do agente.
+    * **Descrição:** Define o modo de operação do agente para salvar o arquivo Excel no servidor (a resposta JSON é sempre retornada).
     * **Valores Possíveis:**
-        * `single`: Processa o arquivo e salva os dados em um novo arquivo Excel com nome único (ex: `NotaFiscal_XXX.xlsx`). Retorna os dados extraídos deste arquivo.
+        * `single`: Processa o arquivo e salva os dados em um novo arquivo Excel com nome baseado no número da nota (ex: `NotaFiscal_XXX.xlsx`). Retorna os dados extraídos deste arquivo.
         * `accumulated`: Processa o arquivo e adiciona os dados extraídos ao final de um arquivo Excel mestre (`COMPILADO_MESTRE.xlsx`). Retorna os dados extraídos *deste último arquivo processado*.
 
 ## Resposta da API (Output)
 
 ### Sucesso (Código HTTP 200)
 
-Se o processamento for bem-sucedido, a API retornará um JSON contendo os dados extraídos da nota fiscal. Os campos presentes no JSON dependerão do que o agente conseguiu encontrar no arquivo. Todos os campos são opcionais.
+Se o processamento for bem-sucedido, a API retornará um JSON contendo os dados extraídos da nota fiscal.
 
-**Exemplo de Resposta JSON:**
+* **Estrutura:** O JSON seguirá a estrutura definida internamente (baseada no modelo `DadosNotaFiscal`).
+* **Campos Opcionais:** **Todos os campos são opcionais.** O agente tentará extrair o máximo de informações possível do texto bruto. Campos que não forem encontrados no documento serão retornados como `null`.
+
+**Exemplo de Resposta JSON Completa (com todos os campos possíveis):**
 
 ```json
 {
@@ -62,5 +65,5 @@ Se o processamento for bem-sucedido, a API retornará um JSON contendo os dados 
   "base_calculo": null,
   "valor_iss": null,
   "valor_icms": null,
-  "discriminacao_servicos": null
+  "discriminacao_servicos": null 
 }
